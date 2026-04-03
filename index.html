@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Vroumiam Pro | Livraison Cotonou 229</title>
+    <title>Vroumiam Pro | Livraison Cotonou</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js"></script>
     <script>
@@ -12,162 +12,304 @@
             theme: { extend: { colors: { primary: '#FF6B00', success: '#00C853', darkBg: '#080808', cardBg: '#121212' }}}
         }
     </script>
-    <style>[x-cloak] { display: none !important; } .no-scrollbar::-webkit-scrollbar { display: none; }</style>
+    <style>
+        [x-cloak] { display: none !important; }
+        .no-scrollbar::-webkit-scrollbar { display: none; }
+        /* ANIMATIONS CUSTOM */
+        .fade-in { animation: fadeIn 0.5s ease-out; }
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+        .slide-in-right { animation: slideInRight 0.3s ease-out; }
+        @keyframes slideInRight { from { transform: translateX(100%); } to { transform: translateX(0); } }
+        .toast-in { animation: toastIn 0.3s ease-out, toastOut 0.3s ease-in 2s forwards; }
+        @keyframes toastIn { from { transform: translateY(100%); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
+        @keyframes toastOut { from { transform: translateY(0); opacity: 1; } to { transform: translateY(100%); opacity: 0; } }
+    </style>
 </head>
-<body class="bg-darkBg text-white antialiased font-sans" x-data="vroumApp">
+<body class="bg-darkBg text-white antialiased font-sans" x-data="vroumApp" x-init="init()">
 
     <header class="sticky top-0 z-50 bg-darkBg/90 backdrop-blur border-b border-white/5 h-16 flex items-center px-4">
         <div class="max-w-4xl mx-auto w-full flex justify-between items-center">
             <button @click="page = 'home'" class="text-2xl font-black italic tracking-tighter text-primary">Vroumiam</button>
-            <button @click="cartOpen = true" class="relative bg-cardBg p-2 rounded-full border border-white/10 hover:border-primary transition">
-                <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 11V7a4 4 0 00-8 0v4M5 9h14l1 12H4L5 9z"></path></svg>
-                <span x-show="cart.length > 0" x-text="cart.length" class="absolute -top-1 -right-1 bg-primary text-[10px] px-1.5 rounded-full font-bold border-2 border-darkBg"></span>
-            </button>
+            <div class="flex items-center space-x-4">
+                <button @click="shareSite()" class="p-2 bg-white/5 rounded-full hover:text-primary transition relative group">
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8.684 13.342C8.886 12.938 9 12.482 9 12c0-.482-.114-.938-.316-1.342m0 2.684a3 3 0 110-2.684m0 2.684l6.632 3.316m-6.632-6l6.632-3.316m0 0a3 3 0 100-2.684 3 3 0 000 2.684z"></path></svg>
+                    <span class="absolute top-full mt-2 left-1/2 -translate-x-1/2 bg-black text-xs px-2 py-1 rounded opacity-0 group-hover:opacity-100 transition whitespace-nowrap">Partager</span>
+                </button>
+                <button @click="cartOpen = true" class="relative bg-cardBg p-2 rounded-full border border-white/10 hover:border-primary transition">
+                    <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 11V7a4 4 0 00-8 0v4M5 9h14l1 12H4L5 9z"></path></svg>
+                    <span x-show="cart.length > 0" x-text="cart.length" class="absolute -top-1 -right-1 bg-primary text-[10px] px-1.5 rounded-full font-bold border-2 border-darkBg"></span>
+                </button>
+            </div>
         </div>
     </header>
 
-    <div x-show="page === 'home'" x-cloak>
+    <div x-show="page === 'home'" x-cloak class="fade-in">
         <section class="py-10 px-4 text-center max-w-2xl mx-auto">
-            <h1 class="text-4xl md:text-6xl font-black italic mb-4 leading-tight">Cotonou est servi <span class="text-primary underline decoration-white/10">Vite.</span></h1>
-            <p class="text-gray-500 font-bold text-[10px] uppercase tracking-[0.3em]">Burgers • Alloco • Pizza • 25min</p>
+            <h1 class="text-4xl md:text-6xl font-black italic mb-4 leading-tight">Cotonou servi <span class="text-primary underline decoration-white/10 text-glow">Vite.</span></h1>
+            <p class="text-gray-500 font-bold text-[10px] uppercase tracking-[0.3em]">Burgers • Igname Pilée • Pizza • 25min</p>
         </section>
 
         <main class="max-w-4xl mx-auto px-4 grid grid-cols-1 md:grid-cols-2 gap-4 pb-24">
             <template x-for="res in restaurants" :key="res.id">
-                <div @click="activeResto = res; page = 'menu'" class="cursor-pointer bg-cardBg rounded-[2rem] overflow-hidden border border-white/5 hover:border-primary transition duration-300">
-                    <img :src="res.img" class="h-40 w-full object-cover">
+                <div @click="activeResto = res; page = 'menu'" class="cursor-pointer bg-cardBg rounded-[2rem] overflow-hidden border border-white/5 hover:border-primary transition duration-300 group">
+                    <img :src="res.img" class="h-40 w-full object-cover opacity-80 group-hover:opacity-100 group-hover:scale-105 transition duration-500">
                     <div class="p-5">
                         <div class="flex justify-between items-center">
-                            <h3 class="font-black text-xl italic" x-text="res.name"></h3>
+                            <h3 class="font-black text-xl italic group-hover:text-primary transition" x-text="res.name"></h3>
                             <span class="bg-primary/10 text-primary px-2 py-1 rounded text-[10px] font-black uppercase" x-text="res.time + ' min'"></span>
                         </div>
-                        <p class="text-gray-500 text-xs mt-1" x-text="res.cuisine"></p>
                     </div>
                 </div>
             </template>
         </main>
     </div>
 
-    <div x-show="page === 'menu'" x-cloak>
+    <div x-show="page === 'menu'" x-cloak class="fade-in">
         <div class="max-w-2xl mx-auto p-4 pt-6 space-y-4">
-            <div class="flex items-center justify-between mb-6">
-                <h2 class="text-3xl font-black italic uppercase" x-text="activeResto.name"></h2>
-                <button @click="page = 'home'" class="text-[10px] font-black text-gray-500 uppercase tracking-widest hover:text-white">← Changer Resto</button>
+            <div class="flex items-center justify-between mb-6 border-b border-white/5 pb-4">
+                <h2 class="text-3xl font-black italic uppercase text-primary" x-text="activeResto.name"></h2>
+                <button @click="page = 'home'" class="text-[10px] font-black text-gray-500 uppercase tracking-widest hover:text-white transition">← Retour</button>
             </div>
             <template x-for="dish in dishes">
-                <div class="bg-cardBg p-5 rounded-[1.5rem] border border-white/5 flex justify-between items-center">
-                    <div>
-                        <h3 class="font-bold text-lg" x-text="dish.name"></h3>
-                        <p class="text-primary font-black italic text-sm" x-text="dish.price + ' FCFA'"></p>
+                <div class="bg-cardBg p-5 rounded-[1.5rem] border border-white/5 flex justify-between items-center hover:border-white/10 transition">
+                    <div class="flex items-center space-x-4">
+                        <img :src="dish.img" class="w-16 h-16 rounded-xl object-cover border border-white/5">
+                        <div>
+                            <h3 class="font-bold text-lg" x-text="dish.name"></h3>
+                            <p class="text-primary font-black italic text-sm" x-text="dish.price + ' FCFA'"></p>
+                        </div>
                     </div>
-                    <button @click="addToCart(dish)" class="bg-white text-black h-10 w-10 rounded-xl font-black text-xl hover:bg-primary transition shadow-lg shadow-white/5">+</button>
+                    <button @click="openOptionsModal(dish)" class="bg-white text-black h-10 w-10 rounded-xl font-black text-xl hover:bg-primary transition shadow-lg">+</button>
                 </div>
             </template>
         </div>
     </div>
 
-    <div x-show="page === 'track'" x-cloak class="h-[70vh] flex flex-col items-center justify-center p-6 text-center">
-        <div class="w-24 h-24 bg-success/20 rounded-full flex items-center justify-center mb-8 animate-pulse">
-            <span class="text-5xl">🛵</span>
+    <div x-show="optionsModalOpen" x-cloak class="fixed inset-0 z- flex items-end sm:items-center justify-center p-4">
+        <div class="absolute inset-0 bg-black/90 backdrop-blur-sm" @click="optionsModalOpen = false" x-transition.opacity></div>
+        <div class="bg-darkBg w-full max-w-md rounded-t-[2rem] sm:rounded-[2rem] p-6 border border-white/10 z-10 shadow-2xl slide-in-bottom sm:zoom-in" x-transition>
+            <div class="flex justify-between items-start mb-6">
+                <div>
+                    <h3 class="text-2xl font-black italic text-primary" x-text="currentDish.name"></h3>
+                    <p class="text-sm font-bold"><span x-text="calculateDishPrice()"></span> FCFA</p>
+                </div>
+                <button @click="optionsModalOpen = false" class="text-gray-500 hover:text-white text-xl">✕</button>
+            </div>
+            
+            <div class="space-y-6 overflow-y-auto max-h-[60vh] no-scrollbar pb-4">
+                <template x-for="category in currentDish.optionCategories" :key="category.name">
+                    <div>
+                        <h4 class="text-xs font-black uppercase text-gray-500 tracking-widest mb-3" x-text="category.name"></h4>
+                        <div class="grid grid-cols-2 gap-2">
+                            <template x-for="option in category.options" :key="option.name">
+                                <button @click="toggleOption(category, option)" 
+                                    class="p-3 rounded-xl border text-sm font-bold flex justify-between items-center transition"
+                                    :class="isOptionSelected(category, option) ? 'bg-primary/10 border-primary text-primary' : 'bg-cardBg border-white/5 text-white hover:border-white/20'">
+                                    <span x-text="option.name"></span>
+                                    <span class="text-xs font-black" x-text="option.price > 0 ? '+' + option.price : ''"></span>
+                                </button>
+                            </template>
+                        </div>
+                    </div>
+                </template>
+            </div>
+            
+            <button @click="addCurrentDishToCart()" class="w-full bg-primary py-4 rounded-xl font-black uppercase italic mt-6 flex justify-between px-6 shadow-lg shadow-orange-600/20 active:scale-95 transition">
+                <span>Ajouter au panier</span>
+                <span x-text="calculateDishPrice() + ' FCFA'"></span>
+            </button>
         </div>
-        <h2 class="text-4xl font-black italic uppercase text-success">Commande Envoyée !</h2>
-        <p class="text-gray-400 mt-4 max-w-xs text-sm">Nous t'avons redirigé vers WhatsApp pour finaliser la livraison avec le livreur.</p>
-        <button @click="page = 'home'; cart = []" class="mt-10 text-primary font-black uppercase text-[10px] tracking-widest border-b-2 border-primary pb-1">Nouvelle commande</button>
     </div>
 
     <div x-show="cartOpen" x-cloak class="fixed inset-0 z-">
-        <div class="absolute inset-0 bg-black/90 backdrop-blur-md" @click="cartOpen = false"></div>
-        <div class="absolute inset-y-0 right-0 w-full max-w-sm bg-darkBg p-6 flex flex-col shadow-2xl border-l border-white/5">
-            <div class="flex justify-between items-center mb-10">
-                <h2 class="text-2xl font-black italic uppercase tracking-tighter">Ton Panier</h2>
-                <button @click="cartOpen = false" class="text-gray-500 hover:text-white text-xl font-black">✕</button>
+        <div class="absolute inset-0 bg-black/95 backdrop-blur-sm" @click="cartOpen = false" x-transition.opacity></div>
+        <div class="absolute inset-y-0 right-0 w-full max-w-sm bg-darkBg p-6 flex flex-col shadow-2xl border-l border-white/5 slide-in-right" x-transition:enter="transition ease-out duration-300" x-transition:enter-start="transform translate-x-full" x-transition:enter-end="transform translate-x-0" x-transition:leave="transition ease-in duration-300" x-transition:leave-start="transform translate-x-0" x-transition:leave-end="transform translate-x-full">
+            <div class="flex justify-between items-center mb-6">
+                <h2 class="text-2xl font-black italic uppercase tracking-tighter text-primary">Ton Panier</h2>
+                <button @click="cartOpen = false" class="text-gray-500 hover:text-white text-xl">✕</button>
             </div>
+
+            <div class="mb-6 bg-white/5 p-4 rounded-2xl border border-white/10">
+                <label class="text-[10px] font-black uppercase text-gray-500 tracking-widest block mb-2 text-center">Ta Zone de Livraison</label>
+                <select x-model="selectedZone" class="w-full bg-darkBg border border-white/10 rounded-xl p-3 font-bold text-sm outline-none focus:border-primary text-white cursor-pointer transition">
+                    <template x-for="(price, zone) in zones">
+                        <option :value="zone" x-text="zone + ' (' + price + ' FCFA)'"></option>
+                    </template>
+                </select>
+            </div>
+
             <div class="flex-1 overflow-y-auto space-y-3 no-scrollbar">
-                <template x-for="(item, index) in cart" :key="index">
-                    <div class="flex justify-between items-center bg-cardBg p-4 rounded-xl border border-white/5">
-                        <p class="font-bold text-sm" x-text="item.name"></p>
-                        <button @click="cart.splice(index, 1)" class="text-red-500 p-2">✕</button>
+                <template x-for="(item, index) in cart" :key="item.cartId">
+                    <div class="bg-cardBg p-4 rounded-xl border border-white/5 space-y-2">
+                        <div class="flex justify-between items-start">
+                            <div>
+                                <p class="font-bold text-sm" x-text="item.name"></p>
+                                <p class="text-primary font-black italic text-xs" x-text="item.finalPrice + ' FCFA'"></p>
+                            </div>
+                            <button @click="cart.splice(index, 1); saveCart()" class="text-red-500 p-1 text-xs font-black italic hover:text-red-400">Retirer</button>
+                        </div>
+                        <template x-if="item.selectedOptions.length > 0">
+                            <p class="text-[11px] text-gray-500 italic">
+                                Avec : <span x-text="item.selectedOptions.map(o => o.name).join(', ')"></span>
+                            </p>
+                        </template>
                     </div>
                 </template>
-                <div x-show="cart.length === 0" class="text-center py-20 text-gray-700 font-black uppercase text-[10px] tracking-widest italic">Vraiment aucune envie ? 🍕</div>
+                <div x-show="cart.length === 0" class="text-center py-20 text-gray-700 font-black uppercase text-[10px]">Vide... 🍕</div>
             </div>
             
             <div class="pt-6 border-t border-white/10" x-show="cart.length > 0">
-                <div class="flex justify-between text-2xl font-black italic mb-6"><span>Total</span><span class="text-primary" x-text="totalPrice() + ' FCFA'"></span></div>
+                <div class="space-y-2 mb-6 text-sm">
+                    <div class="flex justify-between text-gray-500 font-bold uppercase"><span>Articles</span><span x-text="itemTotal() + ' FCFA'"></span></div>
+                    <div class="flex justify-between text-gray-500 font-bold uppercase"><span>Livraison (<span x-text="selectedZone"></span>)</span><span x-text="zones[selectedZone] + ' FCFA'"></span></div>
+                    <div class="h-px bg-white/5 w-full my-2"></div>
+                    <div class="flex justify-between text-2xl font-black italic"><span>Total</span><span class="text-primary text-glow" x-text="grandTotal() + ' FCFA'"></span></div>
+                </div>
                 
                 <button @click="submitToWhatsApp()" :disabled="loading"
-                    class="w-full bg-primary disabled:opacity-50 py-5 rounded-2xl font-black text-xl italic uppercase shadow-xl shadow-orange-600/30 flex items-center justify-center space-x-3 transition active:scale-95">
-                    <span x-show="!loading">🚀 Commander via WhatsApp</span>
+                    class="w-full bg-primary py-5 rounded-2xl font-black text-xl italic uppercase shadow-xl shadow-orange-600/30 flex items-center justify-center transition active:scale-95 disabled:opacity-50">
+                    <span x-show="!loading">🚀 Commander (WhatsApp)</span>
                     <span x-show="loading" class="animate-spin border-2 border-black border-t-transparent rounded-full w-5 h-5"></span>
                 </button>
-                <p class="text-[9px] text-center text-gray-500 mt-4 uppercase font-bold tracking-widest">Le GPS sera activé pour le livreur</p>
             </div>
         </div>
+    </div>
+
+    <div x-show="toast.open" x-cloak class="fixed bottom-6 left-1/2 -translate-x-1/2 z- toast-in bg-success text-black px-6 py-3 rounded-full font-black italic shadow-2xl flex items-center space-x-2">
+        <span>✅</span>
+        <span x-text="toast.message"></span>
     </div>
 
     <script>
         document.addEventListener('alpine:init', () => {
             Alpine.data('vroumApp', () => ({
                 page: 'home', cartOpen: false, loading: false, activeResto: {}, cart: [],
+                optionsModalOpen: false, currentDish: {}, currentSelectedOptions: {},
+                toast: { open: false, message: '' },
                 
-                // DATA PRO
+                // GESTION DES ZONES ET FRAIS
+                selectedZone: 'Fidjrossè',
+                zones: { 'Fidjrossè': 500, 'Haie Vive': 600, 'Calavi': 1200, 'Akpakpa': 1000, 'Cotonou Centre': 700, 'Zogbo': 800 },
+
                 restaurants: [
-                    { id: 1, name: 'Burger Palace', cuisine: 'Gourmet Burger', time: '20', img: 'https://images.unsplash.com/photo-1568901346375-23c9450c58cd?w=600' },
-                    { id: 2, name: 'Chez Maman', cuisine: 'Local (Alloco/Atassi)', time: '15', img: 'https://images.unsplash.com/photo-1604329760661-e71dc83f8f26?w=600' },
-                    { id: 3, name: 'Pizza Roma', cuisine: 'Feu de bois', time: '30', img: 'https://images.unsplash.com/photo-1513104890138-7c749659a591?w=600' },
-                    { id: 4, name: 'Sushi Zen', cuisine: 'Japonais Frais', time: '40', img: 'https://images.unsplash.com/photo-1579871494447-9811cf80d66c?w=600' }
+                    { id: 1, name: 'Burger Palace', cuisine: 'Burger • Americain', time: '20', img: 'https://images.unsplash.com/photo-1568901346375-23c9450c58cd?w=600' },
+                    { id: 2, name: 'Chez Maman Local', cuisine: 'Béninois • Tradition', time: '15', img: 'https://images.unsplash.com/photo-1604329760661-e71dc83f8f26?w=600' },
+                    { id: 3, name: 'Pizza Roma', cuisine: 'Pizza • Italien', time: '30', img: 'https://images.unsplash.com/photo-1513104890138-7c749659a591?w=600' }
                 ],
                 dishes: [
-                    { name: 'Le Combo Vroum XXL', price: 4500 },
-                    { name: 'Poisson Braisé & Alloco', price: 3000 },
-                    { name: 'Pizza Regina Cotonou', price: 5500 },
-                    { name: 'Menu Burger Cheese', price: 3500 }
+                    // NOUVEAU PLAT : IGNAME PILÉE
+                    { 
+                        id: 1, name: 'Igname Pilée (Tchigan)', price: 2000, img: 'https://pbs.twimg.com/media/D-Hn7pGWsAEVzX-.jpg', 
+                        optionCategories: [
+                            { name: 'Sauce au choix', type: 'radio', options: [{ name: 'Sauce Arachide', price: 0 }, { name: 'Sauce Gombo', price: 0 }, { name: 'Sauce Légume', price: 0 }] },
+                            { name: 'Accompagnement', type: 'checkbox', options: [{ name: 'Poisson Braisé', price: 1500 }, { name: 'Viande de Mouton', price: 2000 }, { name: 'Fromage Peulh (Wagassi)', price: 1000 }] }
+                        ]
+                    },
+                    { 
+                        id: 2, name: 'Menu Maxi Vroum Burger', price: 4500, img: 'https://images.unsplash.com/photo-1594179047519-f347310d3322?w=600',
+                        optionCategories: [
+                            { name: 'Cuisson Viande', type: 'radio', options: [{ name: 'À Point', price: 0 }, { name: 'Bien Cuit', price: 0 }] },
+                            { name: 'Suppléments', type: 'checkbox', options: [{ name: 'Double Cheese', price: 500 }, { name: 'Bacon', price: 700 }] }
+                        ]
+                    },
+                    { id: 3, name: 'Poisson Braisé & Alloco', price: 3000, img: 'https://images.unsplash.com/photo-1580133202685-2e6398f6f345?w=600', optionCategories: [] },
+                    { id: 4, name: 'Pizza Cotonou Mixte', price: 5500, img: 'https://images.unsplash.com/photo-1593560704563-f176a2eb61db?w=600', optionCategories: [] },
                 ],
 
-                addToCart(item) {
-                    this.cart.push({...item});
-                    this.cartOpen = true;
+                init() {
+                    const savedCart = localStorage.getItem('vroum_cart');
+                    if (savedCart) { this.cart = JSON.parse(savedCart); }
                 },
 
-                totalPrice() { return this.cart.reduce((s, i) => s + i.price, 0); },
-
-                // LOGIQUE DE COMMANDE RÉELLE
-                submitToWhatsApp() {
-                    const WHATSAPP_NUM = "2290147535343"; // REMPLACE PAR TON NUMÉRO (Format: 22960000000)
-                    this.loading = true;
-
-                    // 1. Demander la localisation GPS
-                    if (!navigator.geolocation) {
-                        alert("Ton navigateur ne supporte pas le GPS.");
-                        this.loading = false;
-                        return;
+                // LOGIQUE OPTIONS
+                openOptionsModal(dish) {
+                    this.currentDish = JSON.parse(JSON.stringify(dish)); // Copie profonde
+                    this.currentSelectedOptions = {};
+                    // Pré-sélectionner les options 'radio' par défaut
+                    if (this.currentDish.optionCategories) {
+                        this.currentDish.optionCategories.forEach(cat => {
+                            if (cat.type === 'radio' && cat.options.length > 0) {
+                                this.currentSelectedOptions[cat.name] = [cat.options];
+                            }
+                        });
                     }
+                    this.optionsModalOpen = true;
+                },
+                toggleOption(category, option) {
+                    if (!this.currentSelectedOptions[category.name]) { this.currentSelectedOptions[category.name] = []; }
+                    if (category.type === 'radio') {
+                        this.currentSelectedOptions[category.name] = [option];
+                    } else {
+                        const index = this.currentSelectedOptions[category.name].findIndex(o => o.name === option.name);
+                        if (index > -1) { this.currentSelectedOptions[category.name].splice(index, 1); }
+                        else { this.currentSelectedOptions[category.name].push(option); }
+                    }
+                },
+                isOptionSelected(category, option) {
+                    if (!this.currentSelectedOptions[category.name]) return false;
+                    return this.currentSelectedOptions[category.name].some(o => o.name === option.name);
+                },
+                calculateDishPrice() {
+                    let total = this.currentDish.price || 0;
+                    Object.values(this.currentSelectedOptions).flat().forEach(opt => { total += opt.price || 0; });
+                    return total;
+                },
+                addCurrentDishToCart() {
+                    const finalPrice = this.calculateDishPrice();
+                    const selectedOptionsList = Object.values(this.currentSelectedOptions).flat();
+                    this.cart.push({
+                        cartId: Date.now(), id: this.currentDish.id, name: this.currentDish.name, 
+                        finalPrice: finalPrice, selectedOptions: selectedOptionsList
+                    });
+                    this.saveCart();
+                    this.optionsModalOpen = false;
+                    this.showToast('Miam ! Ajouté au panier');
+                },
+
+                // GESTION PANIER
+                saveCart() { localStorage.setItem('vroum_cart', JSON.stringify(this.cart)); },
+                itemTotal() { return this.cart.reduce((s, i) => s + i.finalPrice, 0); },
+                grandTotal() { return this.itemTotal() + (this.zones[this.selectedZone] || 0); },
+
+                // UTILITAIRES
+                shareSite() {
+                    const shareData = { title: 'Vroumiam', text: 'Commande ton repas en 2 min ici !', url: window.location.href };
+                    navigator.share(shareData).catch(() => {
+                        window.open(`https://wa.me/?text=Faim ? Commande vite sur Vroumiam : ${window.location.href}`, '_blank');
+                    });
+                },
+                showToast(message) {
+                    this.toast.message = message; this.toast.open = true;
+                    setTimeout(() => { this.toast.open = false; }, 2300);
+                },
+
+                // WHATSAPP
+                submitToWhatsApp() {
+                    const WHATSAPP_NUM = "229XXXXXXXX"; // REMPLACE PAR TON NUMÉRO (Format: 22960000000)
+                    this.loading = true;
+                    if (!navigator.geolocation) { alert("GPS non supporté."); this.loading = false; return; }
 
                     navigator.geolocation.getCurrentPosition(
                         (pos) => {
-                            const lat = pos.coords.latitude;
-                            const lon = pos.coords.longitude;
+                            const lat = pos.coords.latitude, lon = pos.coords.longitude;
                             const mapLink = `https://www.google.com/maps?q=${lat},${lon}`;
                             
-                            // 2. Construire le message
                             let msg = `*NOUVELLE COMMANDE VROUMIAM*%0A---------------------------%0A`;
                             msg += `*Restaurant:* ${this.activeResto.name}%0A%0A`;
-                            this.cart.forEach(item => {
-                                msg += `• ${item.name} - ${item.price} FCFA%0A`;
+                            this.cart.forEach(item => { 
+                                msg += `• *${item.name}* (${item.finalPrice} FCFA)%0A`; 
+                                if (item.selectedOptions.length > 0) {
+                                    msg += `  _Avec : ${item.selectedOptions.map(o => o.name).join(', ')}_%0A`;
+                                }
                             });
-                            msg += `%0A*TOTAL : ${this.totalPrice()} FCFA*%0A---------------------------%0A`;
-                            msg += `📍 *MA POSITION :* ${mapLink}`;
+                            msg += `%0A*Zone:* ${this.selectedZone} (+${this.zones[this.selectedZone]} FCFA)%0A`;
+                            msg += `*TOTAL À PAYER : ${this.grandTotal()} FCFA*%0A---------------------------%0A`;
+                            msg += `📍 *POSITION GPS :* ${mapLink}`;
 
-                            // 3. Envoyer et Nettoyer
                             window.open(`https://wa.me/${WHATSAPP_NUM}?text=${msg}`, '_blank');
-                            this.loading = false;
-                            this.cartOpen = false;
-                            this.page = 'track';
+                            this.loading = false; this.cartOpen = false;
                         },
-                        (err) => {
-                            alert("Erreur GPS : Active ta localisation pour être livré précisément !");
-                            this.loading = false;
-                        }
+                        (err) => { alert("Active ton GPS pour être livré précisément !"); this.loading = false; }
                     );
                 }
             }));
