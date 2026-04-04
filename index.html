@@ -64,51 +64,57 @@
     removeFromCart(index) { this.cart.splice(index, 1); },
     get total() { return this.cart.reduce((sum, p) => sum + p.price, 0) + (this.delivery === 'express' ? 1000 : 500); },
 
-    async finalizeOrder() {
-        if(!this.name || !this.phone || !this.address) return alert('Remplissez vos infos !');
-        this.isSending = true;
+  async finalizeOrder() {
+    if(!this.name || !this.phone || !this.address) return alert('Remplissez vos infos !');
+    this.isSending = true;
 
-        let exactGps = 'Position non disponible';
-        try {
-    const success = await window.sendOrderToFirebase(data);
-    if(success) {
+    // 1. On prépare la position par défaut (au cas où le GPS échoue)
+    let exactGps = "Position non disponible (GPS désactivé)";
+
+    try {
+        // 2. On tente de récupérer le GPS mais on ne bloque pas si ça rate
+        const pos = await new Promise((resolve, reject) => {
+            navigator.geolocation.getCurrentPosition(resolve, reject, { 
+                enableHighAccuracy: false, // On baisse la précision pour que ça soit plus rapide
+                timeout: 4000 // On n'attend que 4 secondes max
+            });
+        }).catch(e => {
+            console.log("GPS ignoré pour envoyer la commande");
+            return null; 
+        });
+
+        if(pos) {
+            exactGps = `https://www.google.com/maps?q=${pos.coords.latitude},${pos.coords.longitude}`;
+        }
+    } catch (error) {
+        // On ne fait rien ici, on garde juste la valeur par défaut
+    }
+
+    // 3. On prépare les données
+    const data = {
+        clientName: this.name,
+        phone: this.phone,
+        address: this.address,
+        gps: exactGps,
+        payment: this.payment,
+        delivery: this.delivery,
+        items: this.cart.map(p => p.name).join(', '),
+        restaurant: this.cart.length > 0 ? this.cart.name : 'Inconnu',
+        total: this.total
+    };
+
+    // 4. L'envoi Firebase (On force l'envoi quoi qu'il arrive)
+    try {
+        await window.sendOrderToFirebase(data);
         alert('🚀 VROUM ! Commande validée.');
         this.cart = []; this.showCart = false; this.step = 1;
         this.name = ''; this.phone = ''; this.address = '';
+    } catch(e) { 
+        alert('Erreur réseau : Vérifie ta connexion internet !'); 
+    } finally { 
+        this.isSending = false; 
     }
-} catch(e) { 
-    alert('Erreur de connexion : Vérifiez votre internet ou Firebase'); 
-}
-            // ICI LE LIEN GPS EST ENFIN PARFAIT :
-            exactGps = `https://www.google.com/maps?q=${pos.coords.latitude},${pos.coords.longitude}`;
-        } catch (error) {
-            exactGps = 'GPS non activé';
-        }
-
-        const data = {
-            clientName: this.name,
-            phone: this.phone,
-            address: this.address,
-            gps: exactGps,
-            payment: this.payment,
-            delivery: this.delivery,
-            items: this.cart.map(p => p.name).join(', '),
-            restaurant: this.cart.length > 0 ? this.cart.name : 'Inconnu',
-            total: this.total
-        };
-
-        try {
-            await window.sendOrderToFirebase(data);
-            alert('🚀 VROUM ! Commande validée.');
-            this.cart = []; this.showCart = false; this.step = 1;
-            this.name = ''; this.phone = ''; this.address = '';
-        } catch(e) { 
-            alert('Erreur Firebase'); 
-        } finally { 
-            this.isSending = false; 
-        }
-    }
-}">
+} >
 
     <nav class="p-6 flex justify-between items-center sticky top-0 bg-black/60 backdrop-blur-xl z-50 border-b border-white/5">
         <div>
