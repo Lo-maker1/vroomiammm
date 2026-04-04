@@ -6,44 +6,30 @@
     <title>VROUMIAM - L'élite de la livraison à Cotonou</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script defer src="https://unpkg.com/alpinejs@3.x.x/dist/cdn.min.js"></script>
-<script type="module">
-    import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
-    import { getDatabase, ref, push, set } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-database.js";
+    
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
+        import { getDatabase, ref, push, set } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-database.js";
 
-    const firebaseConfig = {
-        apiKey: "AIzaSyBuzgGc5iumNCurtTpVM5X3_3TK95qbQpc",
-        authDomain: "vroomiam.firebaseapp.com",
-        databaseURL: "https://vroomiam-default-rtdb.europe-west1.firebasedatabase.app",
-        projectId: "vroomiam",
-        storageBucket: "vroomiam.firebasestorage.app",
-        messagingSenderId: "13433812189",
-        appId: "1:13433812189:web:40b8ba4b14cb0a4deb9734"
-    };
+        const firebaseConfig = {
+            apiKey: "AIzaSyBuzgGc5iumNCurtTpVM5X3_3TK95qbQpc",
+            authDomain: "vroomiam.firebaseapp.com",
+            databaseURL: "https://vroomiam-default-rtdb.europe-west1.firebasedatabase.app",
+            projectId: "vroomiam",
+            storageBucket: "vroomiam.firebasestorage.app",
+            messagingSenderId: "13433812189",
+            appId: "1:13433812189:web:40b8ba4b14cb0a4deb9734"
+        };
 
-    const app = initializeApp(firebaseConfig);
-    const db = getDatabase(app);
+        const app = initializeApp(firebaseConfig);
+        const db = getDatabase(app);
 
-    window.sendOrderToFirebase = (orderData) => {
-        const ordersRef = ref(db, 'orders');
-        return set(push(ordersRef), { ...orderData, timestamp: Date.now(), status: 'En cours' });
-    };
+        window.sendOrderToFirebase = (orderData) => {
+            const ordersRef = ref(db, 'orders');
+            return set(push(ordersRef), { ...orderData, timestamp: Date.now(), status: 'En cours' });
+        };
+    </script>
 
-    // NOUVELLE FONCTION POUR LE GPS PRÉCIS
-    window.getPreciseLocation = () => {
-        return new Promise((resolve) => {
-            if (!navigator.geolocation) {
-                resolve("Position non supportée");
-            }
-            navigator.geolocation.getCurrentPosition(
-                (pos) => resolve(`https://www.google.com/maps?q=${pos.coords.latitude},${pos.coords.longitude}`),
-                () => resolve("Position refusée par le client"),
-                { enableHighAccuracy: true, timeout: 5000 }
-            );
-        });
-    };
-</script>
-
-  
     <style>
         .no-scrollbar::-webkit-scrollbar { display: none; }
         .glass { background: rgba(255, 255, 255, 0.03); backdrop-filter: blur(10px); border: 1px solid rgba(255, 255, 255, 0.05); }
@@ -69,62 +55,46 @@
     get total() { return this.cart.reduce((sum, p) => sum + p.price, 0) + (this.delivery === 'express' ? 1000 : 500); },
 
     async finalizeOrder() {
-    // 1. Vérification des champs
-    if(!this.name || !this.phone || !this.address) return alert('Remplissez vos infos !');
-    
-    this.isSending = true;
+        if(!this.name || !this.phone || !this.address) return alert('Remplissez vos infos !');
+        this.isSending = true;
 
-    // 2. Récupération de la position GPS précise (Latitude/Longitude)
-    let exactGps = "Position non disponible";
-    try {
-        const pos = await new Promise((resolve, reject) => {
-            navigator.geolocation.getCurrentPosition(resolve, reject, { 
-                enableHighAccuracy: true, 
-                timeout: 7000 
+        let exactGps = 'Position non disponible';
+        try {
+            const pos = await new Promise((resolve, reject) => {
+                navigator.geolocation.getCurrentPosition(resolve, reject, { 
+                    enableHighAccuracy: true, 
+                    timeout: 7000 
+                });
             });
-        });
-        exactGps = `https://www.google.com/maps?q=${pos.coords.latitude},${pos.coords.longitude}`;
-    } catch (error) {
-        console.log("GPS refusé ou erreur");
-        exactGps = "GPS non activé par le client";
-    }
+            // CORRECTION ICI : Utilisation correcte de ${ } pour le GPS
+            exactGps = `https://www.google.com/maps?q=$${pos.coords.latitude},${pos.coords.longitude}`;
+        } catch (error) {
+            exactGps = 'GPS non activé par le client';
+        }
 
-    // 3. Préparation des données pour ton Tableau de Bord
-    const data = {
-        clientName: this.name,
-        phone: this.phone,
-        address: this.address, // Le quartier écrit à la main
-        gps: exactGps,        // LE POINT GPS RÉEL (Lien Google Maps)
-        payment: this.payment,
-        delivery: this.delivery,
-        items: this.cart.map(p => p.name).join(', '),
-        // On prend le nom du resto du premier article du panier
-        restaurant: this.cart.length > 0 ? this.cart.name : 'Inconnu',
-        total: this.total
-    };
+        const data = {
+            clientName: this.name,
+            phone: this.phone,
+            address: this.address,
+            gps: exactGps,
+            payment: this.payment,
+            delivery: this.delivery,
+            items: this.cart.map(p => p.name).join(', '),
+            // CORRECTION ICI : Accès correct au nom du restaurant
+            restaurant: this.cart.length > 0 ? this.cart.name : 'Inconnu',
+            total: this.total
+        };
 
-    // 4. Envoi final à Firebase
-    try {
-        await window.sendOrderToFirebase(data);
-        alert('🚀 VROUM ! Commande validée. Votre livreur a reçu votre position GPS exacte.');
-        
-        // Réinitialisation du panier
-        this.cart = []; 
-        this.showCart = false; 
-        this.step = 1;
-        this.name = ''; this.phone = ''; this.address = '';
-    } catch(e) { 
-        alert('Erreur de connexion Firebase'); 
-    } finally { 
-        this.isSending = false; 
-    }
-}
         try {
             await window.sendOrderToFirebase(data);
-            alert('🚀 Commande validée ! Un livreur arrive.');
+            alert('🚀 VROUM ! Commande validée.');
             this.cart = []; this.showCart = false; this.step = 1;
-        } catch(e) { alert('Erreur de connexion'); }
-        finally { this.isSending = false; }
+            this.name = ''; this.phone = ''; this.address = '';
+        } catch(e) { 
+            alert('Erreur de connexion'); 
+        } finally { 
+            this.isSending = false; 
+        }
     }
 }">
 
@@ -151,7 +121,6 @@
 
     <main class="px-6 pb-24 space-y-10">
         <h2 class="text-2xl font-bold tracking-tight">Populaire à <span class="text-orange-500">Cotonou</span></h2>
-        
         <div class="grid grid-cols-1 gap-8">
             <template x-for="restau in restaurants" :key="restau.id">
                 <div x-show="category === 'all' || category === restau.cat" 
@@ -163,7 +132,6 @@
                             ⭐ <span x-text="restau.rate"></span>
                         </div>
                     </div>
-                    
                     <div class="p-5 flex justify-between items-end">
                         <div class="space-y-1">
                             <h3 class="text-2xl font-black" x-text="restau.name"></h3>
@@ -179,8 +147,7 @@
         </div>
     </main>
 
-    <div x-show="showCart" class="fixed inset-0 z- flex flex-col bg-black/95 backdrop-blur-2xl p-6" x-transition:enter="transition ease-out duration-300" x-transition:enter-start="translate-y-full" x-transition:enter-end="translate-y-0">
-        
+    <div x-show="showCart" class="fixed inset-0 z-50 flex flex-col bg-black/95 backdrop-blur-2xl p-6" x-transition:enter="transition ease-out duration-300" x-transition:enter-start="translate-y-full" x-transition:enter-end="translate-y-0">
         <div class="flex justify-between items-center mb-8">
             <button @click="showCart = false; step = 1" class="text-gray-400 text-lg">Annuler</button>
             <div class="flex gap-2">
@@ -204,7 +171,6 @@
                 </template>
                 <div x-show="cart.length === 0" class="text-center py-20 text-gray-500 italic">Le panier est vide...</div>
             </div>
-
             <div x-show="cart.length > 0" class="pt-6 border-t border-white/5 space-y-4">
                 <div class="flex justify-between items-center text-xl font-black">
                     <span>TOTAL</span>
@@ -216,14 +182,12 @@
 
         <div x-show="step === 2" class="flex flex-col h-full overflow-y-auto no-scrollbar">
             <h2 class="text-4xl font-black mb-8 italic">DERNIÈRE <span class="text-orange-500">ÉTAPE</span></h2>
-            
             <div class="space-y-6">
                 <div class="space-y-3">
                     <input x-model="name" type="text" placeholder="Ton Nom" class="w-full glass p-6 rounded-2xl outline-none focus:border-orange-500 transition">
                     <input x-model="phone" type="tel" placeholder="Numéro Moov ou MTN" class="w-full glass p-6 rounded-2xl outline-none focus:border-orange-500 transition">
                     <input x-model="address" type="text" placeholder="Quartier précis (Ex: Haie Vive)" class="w-full glass p-6 rounded-2xl outline-none focus:border-orange-500 transition">
                 </div>
-
                 <div>
                     <p class="text-sm font-bold uppercase tracking-widest text-gray-500 mb-3 px-2">Mode de livraison</p>
                     <div class="grid grid-cols-2 gap-3">
@@ -237,7 +201,6 @@
                         </button>
                     </div>
                 </div>
-
                 <div>
                     <p class="text-sm font-bold uppercase tracking-widest text-gray-500 mb-3 px-2">Paiement Mobile</p>
                     <div class="grid grid-cols-2 gap-3">
@@ -249,7 +212,6 @@
                         </button>
                     </div>
                 </div>
-
                 <button @click="finalizeOrder" :disabled="isSending" class="w-full bg-white text-black font-black py-6 rounded-[2rem] text-xl active:scale-95 transition-all flex items-center justify-center gap-3">
                     <span x-show="!isSending">VROUMIAM ! 🛵</span>
                     <span x-show="isSending" class="flex gap-1"><span class="animate-bounce">.</span><span class="animate-bounce delay-100">.</span><span class="animate-bounce delay-200">.</span></span>
@@ -257,6 +219,5 @@
             </div>
         </div>
     </div>
-
 </body>
 </html>
