@@ -6,30 +6,44 @@
     <title>VROUMIAM - L'élite de la livraison à Cotonou</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script defer src="https://unpkg.com/alpinejs@3.x.x/dist/cdn.min.js"></script>
-    
-    <script type="module">
-        import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
-        import { getDatabase, ref, push, set } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-database.js";
+<script type="module">
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
+    import { getDatabase, ref, push, set } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-database.js";
 
-        const firebaseConfig = {
-            apiKey: "AIzaSyBuzgGc5iumNCurtTpVM5X3_3TK95qbQpc",
-            authDomain: "vroomiam.firebaseapp.com",
-            databaseURL: "https://vroomiam-default-rtdb.europe-west1.firebasedatabase.app",
-            projectId: "vroomiam",
-            storageBucket: "vroomiam.firebasestorage.app",
-            messagingSenderId: "13433812189",
-            appId: "1:13433812189:web:40b8ba4b14cb0a4deb9734"
-        };
+    const firebaseConfig = {
+        apiKey: "AIzaSyBuzgGc5iumNCurtTpVM5X3_3TK95qbQpc",
+        authDomain: "vroomiam.firebaseapp.com",
+        databaseURL: "https://vroomiam-default-rtdb.europe-west1.firebasedatabase.app",
+        projectId: "vroomiam",
+        storageBucket: "vroomiam.firebasestorage.app",
+        messagingSenderId: "13433812189",
+        appId: "1:13433812189:web:40b8ba4b14cb0a4deb9734"
+    };
 
-        const app = initializeApp(firebaseConfig);
-        const db = getDatabase(app);
+    const app = initializeApp(firebaseConfig);
+    const db = getDatabase(app);
 
-        window.sendOrderToFirebase = (orderData) => {
-            const ordersRef = ref(db, 'orders');
-            return set(push(ordersRef), { ...orderData, timestamp: Date.now(), status: 'En cours' });
-        };
-    </script>
+    window.sendOrderToFirebase = (orderData) => {
+        const ordersRef = ref(db, 'orders');
+        return set(push(ordersRef), { ...orderData, timestamp: Date.now(), status: 'En cours' });
+    };
 
+    // NOUVELLE FONCTION POUR LE GPS PRÉCIS
+    window.getPreciseLocation = () => {
+        return new Promise((resolve) => {
+            if (!navigator.geolocation) {
+                resolve("Position non supportée");
+            }
+            navigator.geolocation.getCurrentPosition(
+                (pos) => resolve(`https://www.google.com/maps?q=${pos.coords.latitude},${pos.coords.longitude}`),
+                () => resolve("Position refusée par le client"),
+                { enableHighAccuracy: true, timeout: 5000 }
+            );
+        });
+    };
+</script>
+
+  
     <style>
         .no-scrollbar::-webkit-scrollbar { display: none; }
         .glass { background: rgba(255, 255, 255, 0.03); backdrop-filter: blur(10px); border: 1px solid rgba(255, 255, 255, 0.05); }
@@ -55,14 +69,56 @@
     get total() { return this.cart.reduce((sum, p) => sum + p.price, 0) + (this.delivery === 'express' ? 1000 : 500); },
 
     async finalizeOrder() {
-        if(!this.name || !this.phone || !this.address) return alert('Remplissez vos infos !');
-        this.isSending = true;
-        const data = {
-            clientName: this.name, phone: this.phone, address: this.address,
-            payment: this.payment, delivery: this.delivery,
-            items: this.cart.map(p => p.name).join(', '),
-            total: this.total
-        };
+    // 1. Vérification des champs
+    if(!this.name || !this.phone || !this.address) return alert('Remplissez vos infos !');
+    
+    this.isSending = true;
+
+    // 2. Récupération de la position GPS précise (Latitude/Longitude)
+    let exactGps = "Position non disponible";
+    try {
+        const pos = await new Promise((resolve, reject) => {
+            navigator.geolocation.getCurrentPosition(resolve, reject, { 
+                enableHighAccuracy: true, 
+                timeout: 7000 
+            });
+        });
+        exactGps = `https://www.google.com/maps?q=${pos.coords.latitude},${pos.coords.longitude}`;
+    } catch (error) {
+        console.log("GPS refusé ou erreur");
+        exactGps = "GPS non activé par le client";
+    }
+
+    // 3. Préparation des données pour ton Tableau de Bord
+    const data = {
+        clientName: this.name,
+        phone: this.phone,
+        address: this.address, // Le quartier écrit à la main
+        gps: exactGps,        // LE POINT GPS RÉEL (Lien Google Maps)
+        payment: this.payment,
+        delivery: this.delivery,
+        items: this.cart.map(p => p.name).join(', '),
+        // On prend le nom du resto du premier article du panier
+        restaurant: this.cart.length > 0 ? this.cart.name : 'Inconnu',
+        total: this.total
+    };
+
+    // 4. Envoi final à Firebase
+    try {
+        await window.sendOrderToFirebase(data);
+        alert('🚀 VROUM ! Commande validée. Votre livreur a reçu votre position GPS exacte.');
+        
+        // Réinitialisation du panier
+        this.cart = []; 
+        this.showCart = false; 
+        this.step = 1;
+        this.name = ''; this.phone = ''; this.address = '';
+    } catch(e) { 
+        alert('Erreur de connexion Firebase'); 
+    } finally { 
+        this.isSending = false; 
+    }
+}
         try {
             await window.sendOrderToFirebase(data);
             alert('🚀 Commande validée ! Un livreur arrive.');
