@@ -30,20 +30,35 @@
         };
 
         // Fonction pour envoyer au livreur via WhatsApp
-        window.sendToDriver = (id, name, phone, address, items, total) => {
-            const selectEl = document.getElementById(`select-${id}`);
-            const driverName = selectEl.value;
-            
-            if(!driverName) {
-                alert("Choisis un livreur d'abord !");
-                return;
-            }
-            
-            const num = driverNumbers[driverName];
-            const msg = `VROUMIAM 🛵\nNOUVELLE COURSE !\n\n👤 CLIENT: ${name}\n📞 TEL: ${phone}\n🏠 LIEU: ${address}\n🍔 PLAT: ${items}\n💰 TOTAL: ${total} FCFA`;
-            
-            window.open(`https://wa.me/${num}?text=${encodeURIComponent(msg)}`, '_blank');
-        };
+       window.sendToDriver = (id, name, phone, address, items, total) => {
+    const selectEl = document.getElementById(`select-${id}`);
+    const driverName = selectEl.value;
+    
+    if(!driverName) {
+        alert("Choisis un livreur d'abord !");
+        return;
+    }
+    
+    const num = driverNumbers[driverName];
+
+    // Création du lien Google Maps pour l'adresse du client
+    // Ça transforme "Fidjrossè" en lien cliquable pour le GPS du livreur
+    const mapsClient = `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(address)}`;
+    
+    // Le message Ultra-Complet pour le livreur
+    const msg = `🚀 *NOUVELLE COURSE VROUMIAM* 🛵\n` +
+                `------------------------------\n` +
+                `🍔 *COMMANDE :* ${items}\n` +
+                
+                `👤 *CLIENT :* ${name}\n` +
+                `📞 *TEL :* ${phone}\n` +
+                `📍 *LIVRAISON :* ${address}\n` +
+                `🌍 *GPS CLIENT :* ${mapsClient}\n\n` +
+                `------------------------------\n` +
+                `⚡ *Vroum Vroum ! Bonne route !*`;
+    
+    window.open(`https://wa.me/${num}?text=${encodeURIComponent(msg)}`, '_blank');
+};
 
         window.updateStatus = (id, newStatus) => {
             update(ref(db, 'orders/' + id), { status: newStatus });
