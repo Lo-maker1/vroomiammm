@@ -9,11 +9,10 @@
         import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
         import { getDatabase, ref, onValue, update } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-database.js";
 
-        // TA CONFIGURATION FIREBASE
         const firebaseConfig = {
             apiKey: "AIzaSyBuzgGc5iumNCurtTpVM5X3_3TK95qbQpc",
             authDomain: "vroomiam.firebaseapp.com",
-            databaseURL: "https://vroomiam-default-rtdb.europe-west1.firebasedatabase.app", // Lien vers ta base France
+            databaseURL: "https://vroomiam-default-rtdb.europe-west1.firebasedatabase.app",
             projectId: "vroomiam",
             storageBucket: "vroomiam.firebasestorage.app",
             messagingSenderId: "13433812189",
@@ -23,7 +22,37 @@
         const app = initializeApp(firebaseConfig);
         const db = getDatabase(app);
 
-        // ÉCOUTER LES COMMANDES EN TEMPS RÉEL
+        // --- CONFIGURATION DES LIVREURS (METS TES VRAIS NUMÉROS ICI) ---
+        const driverNumbers = {
+            'Marc': '22990000000', 
+            'Boris': '22991000000',
+            'Yasmine': '22992000000'
+        };
+
+        // Fonction pour envoyer au livreur via WhatsApp
+        window.sendToDriver = (id, name, phone, address, items, total) => {
+            const selectEl = document.getElementById(`select-${id}`);
+            const driverName = selectEl.value;
+            
+            if(!driverName) {
+                alert("Choisis un livreur d'abord !");
+                return;
+            }
+            
+            const num = driverNumbers[driverName];
+            const msg = `VROUMIAM 🛵\nNOUVELLE COURSE !\n\n👤 CLIENT: ${name}\n📞 TEL: ${phone}\n🏠 LIEU: ${address}\n🍔 PLAT: ${items}\n💰 TOTAL: ${total} FCFA`;
+            
+            window.open(`https://wa.me/${num}?text=${encodeURIComponent(msg)}`, '_blank');
+        };
+
+        window.updateStatus = (id, newStatus) => {
+            update(ref(db, 'orders/' + id), { status: newStatus });
+        };
+
+        window.updateDriver = (id, driverName) => {
+            update(ref(db, 'orders/' + id), { driver: driverName });
+        };
+
         const ordersRef = ref(db, 'orders');
         onValue(ordersRef, (snapshot) => {
             const data = snapshot.val();
@@ -34,76 +63,99 @@
                 Object.keys(data).reverse().forEach(id => {
                     const order = data[id];
                     const card = `
-                        <div class="bg-gray-800 p-4 rounded-xl border-l-4 ${order.status === 'En cours' ? 'border-orange-500' : 'border-green-500'} mb-4 shadow-lg animate-pulse-once">
+                        <div class="bg-gray-900 p-6 rounded-[2rem] border border-white/5 mb-6 shadow-2xl animate-pulse-once">
                             <div class="flex justify-between items-start">
                                 <div>
-                                    <h3 class="text-orange-500 font-bold text-lg">Commande #${id.slice(-4)}</h3>
-                                    <p class="text-white font-medium">${order.items}</p>
-                                    <p class="text-gray-400 text-sm">Client : ${order.clientName} (${order.phone})</p>
-                                    <p class="text-gray-400 text-sm">📍 ${order.address}</p>
+                                    <h3 class="text-orange-500 font-black text-xl italic uppercase tracking-tighter">Commande #${id.slice(-4)}</h3>
+                                    <p class="text-white font-bold text-lg mt-1">${order.items}</p>
+                                    <div class="mt-3 space-y-1 text-sm text-gray-400">
+                                        <p>👤 <span class="text-white">${order.clientName}</span> (${order.phone})</p>
+                                        <p>📍 ${order.address}</p>
+                                        <p class="text-[10px] uppercase tracking-widest text-gray-500">Payé par : ${order.payment || 'Non spécifié'}</p>
+                                    </div>
                                 </div>
                                 <div class="text-right">
-                                    <span class="bg-orange-900 text-orange-200 text-xs px-2 py-1 rounded-full">${order.status}</span>
-                                    <p class="text-white font-bold mt-2">${order.total} FCFA</p>
+                                    <span class="bg-orange-500 text-black text-[10px] font-black px-3 py-1 rounded-full uppercase italic">${order.status}</span>
+                                    <p class="text-2xl font-black text-white mt-3">${order.total} F</p>
                                 </div>
                             </div>
-                            <div class="mt-4 flex gap-2">
-                                <button onclick="updateStatus('${id}', 'Livré')" class="bg-green-600 hover:bg-green-700 text-white text-xs px-4 py-2 rounded-lg transition">Marquer comme livré</button>
-                                <button onclick="window.open('https://wa.me/${order.phone}')" class="bg-blue-600 text-white text-xs px-4 py-2 rounded-lg">Appeler Client</button>
+
+                            <div class="mt-6 pt-6 border-t border-white/5">
+                                <p class="text-[10px] text-gray-500 uppercase font-black mb-3 tracking-[0.2em]">Affectation Livreur</p>
+                                <div class="flex gap-2">
+                                    <select id="select-${id}" onchange="updateDriver('${id}', this.value)" 
+                                        class="flex-1 bg-black border border-white/10 p-4 rounded-2xl text-sm font-bold text-orange-500 outline-none focus:border-orange-500 transition">
+                                        <option value="">-- Sélectionner --</option>
+                                        <option value="Marc" ${order.driver === 'Marc' ? 'selected' : ''}>🛵 Marc</option>
+                                        <option value="Boris" ${order.driver === 'Boris' ? 'selected' : ''}>🛵 Boris</option>
+                                        <option value="Yasmine" ${order.driver === 'Yasmine' ? 'selected' : ''}>🛵 Yasmine</option>
+                                    </select>
+                                    <button onclick="sendToDriver('${id}', '${order.clientName}', '${order.phone}', '${order.address}', '${order.items}', '${order.total}')" 
+                                        class="bg-orange-500 text-black px-6 rounded-2xl font-black text-xs active:scale-90 transition shadow-lg shadow-orange-500/20 uppercase tracking-tighter">
+                                        🚀 Go
+                                    </button>
+                                </div>
+                            </div>
+
+                            <div class="mt-4 flex gap-3">
+                                <button onclick="updateStatus('${id}', 'Livré')" class="flex-1 bg-white/5 border border-white/10 text-green-500 font-bold py-4 rounded-2xl hover:bg-green-600 hover:text-white transition uppercase text-[10px] tracking-widest">
+                                    ✅ Marquer Livré
+                                </button>
+                                <a href="https://wa.me/${order.phone}" target="_blank" class="bg-[#25D366]/10 border border-[#25D366]/20 text-[#25D366] font-bold px-6 py-4 rounded-2xl flex items-center justify-center">
+                                    💬 Client
+                                </a>
                             </div>
                         </div>
                     `;
                     container.innerHTML += card;
                 });
             } else {
-                container.innerHTML = '<p class="text-gray-500 text-center py-10">Aucune commande pour le moment...</p>';
+                container.innerHTML = '<p class="text-gray-500 text-center py-20 italic">En attente de commandes...</p>';
             }
         });
-
-        window.updateStatus = (id, newStatus) => {
-            update(ref(db, 'orders/' + id), { status: newStatus });
-        };
     </script>
     <style>
         @keyframes pulse-once {
             0% { transform: scale(1); }
-            50% { transform: scale(1.02); }
+            50% { transform: scale(1.01); }
             100% { transform: scale(1); }
         }
-        .animate-pulse-once { animation: pulse-once 0.5s ease-in-out; }
+        .animate-pulse-once { animation: pulse-once 0.4s ease-out; }
     </style>
 </head>
-<body class="bg-black text-white min-h-screen font-sans">
+<body class="bg-[#050505] text-white min-h-screen font-sans selection:bg-orange-500/30">
 
-    <nav class="bg-gray-900 border-b border-orange-500/30 p-4 sticky top-0 z-50">
+    <nav class="bg-black/60 backdrop-blur-xl border-b border-white/5 p-6 sticky top-0 z-50">
         <div class="flex justify-between items-center max-w-4xl mx-auto">
-            <h1 class="text-2xl font-black text-orange-500 tracking-tighter">VROUMIAM <span class="text-white text-xs font-light tracking-normal border border-white px-1 ml-1">ADMIN</span></h1>
-            <div id="status-dot" class="flex items-center gap-2 text-xs text-green-400">
+            <div>
+                <h1 class="text-3xl font-black text-orange-500 tracking-tighter italic">VROUMIAM <span class="text-white text-[10px] font-light tracking-widest not-italic border border-white/20 px-2 py-0.5 ml-2 uppercase">Bureau Admin</span></h1>
+            </div>
+            <div id="status-dot" class="flex items-center gap-2 text-[10px] font-black uppercase tracking-widest text-green-500">
                 <div class="w-2 h-2 bg-green-500 rounded-full animate-ping"></div> Live
             </div>
         </div>
     </nav>
 
-    <main class="p-4 max-w-4xl mx-auto">
-        <div class="grid grid-cols-2 gap-4 mb-8">
-            <div class="bg-gray-900 p-4 rounded-2xl border border-gray-800">
-                <p class="text-gray-400 text-sm">Commandes du jour</p>
-                <p class="text-2xl font-bold text-white">Prêt</p>
+    <main class="p-6 max-w-2xl mx-auto pb-20">
+        <div class="grid grid-cols-2 gap-6 mb-10">
+            <div class="bg-gray-900/50 p-6 rounded-[2rem] border border-white/5">
+                <p class="text-gray-500 text-[10px] font-black uppercase tracking-widest mb-1">Status Base</p>
+                <p class="text-xl font-bold text-white uppercase italic">Connecté ⚡</p>
             </div>
-            <div class="bg-gray-900 p-4 rounded-2xl border border-gray-800">
-                <p class="text-gray-400 text-sm">Chiffre d'affaires</p>
-                <p class="text-2xl font-bold text-orange-500">-- FCFA</p>
+            <div class="bg-gray-900/50 p-6 rounded-[2rem] border border-white/5">
+                <p class="text-gray-500 text-[10px] font-black uppercase tracking-widest mb-1">Chiffre d'Affaires</p>
+                <p class="text-xl font-black text-orange-500 italic">VROUM VROUM</p>
             </div>
         </div>
 
-        <h2 class="text-xl font-bold mb-4 flex items-center gap-2">
-            📦 Commandes entrantes
+        <h2 class="text-2xl font-black mb-8 italic flex items-center gap-3">
+            <span class="text-orange-500 underline decoration-2 underline-offset-8">📦 FLUX DES COMMANDES</span>
         </h2>
 
         <div id="orders-list">
-            <div class="text-center py-10">
-                <div class="inline-block animate-spin rounded-full h-8 w-8 border-t-2 border-orange-500 mb-2"></div>
-                <p class="text-gray-500 text-sm">Connexion à Firebase...</p>
+            <div class="text-center py-20">
+                <div class="inline-block animate-spin rounded-full h-10 w-10 border-t-2 border-orange-500 mb-4"></div>
+                <p class="text-gray-500 text-sm font-bold tracking-widest uppercase">Synchronisation...</p>
              </div>
         </div>
     </main>
