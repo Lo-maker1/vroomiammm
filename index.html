@@ -20,20 +20,26 @@
         appId: "1:13433812189:web:40b8ba4b14cb0a4deb9734"
     };
 
+    // On initialise Firebase globalement
     const app = initializeApp(firebaseConfig);
-    const database = getDatabase(app); // On crée la connexion ici
+    const database = getDatabase(app);
 
-    // On attache la fonction directement à 'window' pour qu'Alpine.js la voie
-    window.sendOrderToFirebase = (orderData) => {
-        const ordersRef = ref(database, 'orders'); // On utilise 'database' qu'on vient de créer
-        return set(push(ordersRef), { 
-            ...orderData, 
-            timestamp: Date.now(), 
-            status: 'En cours' 
-        });
+    // On crée la fonction d'envoi de façon ultra-simple
+    window.sendOrderToFirebase = async (orderData) => {
+        try {
+            const ordersRef = ref(database, 'orders');
+            await set(push(ordersRef), { 
+                ...orderData, 
+                timestamp: Date.now(), 
+                status: 'En cours' 
+            });
+            return true;
+        } catch (error) {
+            console.error("Erreur Firebase détaillée:", error);
+            throw error;
+        }
     };
 </script>
-    
 
     <style>
         .no-scrollbar::-webkit-scrollbar { display: none; }
@@ -64,12 +70,15 @@
 
         let exactGps = 'Position non disponible';
         try {
-            const pos = await new Promise((resolve, reject) => {
-                navigator.geolocation.getCurrentPosition(resolve, reject, { 
-                    enableHighAccuracy: true, 
-                    timeout: 7000 
-                });
-            });
+    const success = await window.sendOrderToFirebase(data);
+    if(success) {
+        alert('🚀 VROUM ! Commande validée.');
+        this.cart = []; this.showCart = false; this.step = 1;
+        this.name = ''; this.phone = ''; this.address = '';
+    }
+} catch(e) { 
+    alert('Erreur de connexion : Vérifiez votre internet ou Firebase'); 
+}
             // ICI LE LIEN GPS EST ENFIN PARFAIT :
             exactGps = `https://www.google.com/maps?q=${pos.coords.latitude},${pos.coords.longitude}`;
         } catch (error) {
