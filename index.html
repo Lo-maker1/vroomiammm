@@ -7,19 +7,33 @@
     <script src="https://cdn.tailwindcss.com"></script>
     <script defer src="https://unpkg.com/alpinejs@3.x.x/dist/cdn.min.js"></script>
     
-    <script type="module">
-        import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
-        import { getDatabase, ref, push, set } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-database.js";
+   <script type="module">
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
+    import { getDatabase, ref, push, set } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-database.js";
 
-        const firebaseConfig = {
-            apiKey: "AIzaSyBuzgGc5iumNCurtTpVM5X3_3TK95qbQpc",
-            authDomain: "vroomiam.firebaseapp.com",
-            databaseURL: "https://vroomiam-default-rtdb.europe-west1.firebasedatabase.app",
-            projectId: "vroomiam",
-            storageBucket: "vroomiam.firebasestorage.app",
-            messagingSenderId: "13433812189",
-            appId: "1:13433812189:web:40b8ba4b14cb0a4deb9734"
-        };
+    const firebaseConfig = {
+        apiKey: "AIzaSyBuzgGc5iumNCurtTpVM5X3_3TK95qbQpc",
+        authDomain: "vroomiam.firebaseapp.com",
+        databaseURL: "https://vroomiam-default-rtdb.europe-west1.firebasedatabase.app",
+        projectId: "vroomiam",
+        storageBucket: "vroomiam.firebasestorage.app",
+        messagingSenderId: "13433812189",
+        appId: "1:13433812189:web:40b8ba4b14cb0a4deb9734"
+    };
+
+    const app = initializeApp(firebaseConfig);
+    // On rend 'db' et la fonction d'envoi accessibles à tout le monde
+    window.db = getDatabase(app); 
+
+    window.sendOrderToFirebase = async (orderData) => {
+        const ordersRef = ref(window.db, 'orders');
+        return set(push(ordersRef), { 
+            ...orderData, 
+            timestamp: Date.now(), 
+            status: 'En cours' 
+        });
+    };
+</script>
 
         const app = initializeApp(firebaseConfig);
         const db = getDatabase(app);
@@ -67,7 +81,7 @@
                 });
             });
             // CORRECTION ICI : Utilisation correcte de ${ } pour le GPS
-            exactGps = `https://www.google.com/maps?q=$${pos.coords.latitude},${pos.coords.longitude}`;
+            exactGps = `https://www.google.com/maps?q=${pos.coords.latitude},${pos.coords.longitude}`;
         } catch (error) {
             exactGps = 'GPS non activé par le client';
         }
