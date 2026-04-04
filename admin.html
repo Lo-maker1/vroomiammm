@@ -3,140 +3,110 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Vroumiam | TABLEAU DE BORD ADMIN</title>
+    <title>VROUMIAM - Administration</title>
     <script src="https://cdn.tailwindcss.com"></script>
-    <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js"></script>
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
+        import { getDatabase, ref, onValue, update } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-database.js";
+
+        // TA CONFIGURATION FIREBASE
+        const firebaseConfig = {
+            apiKey: "AIzaSyBuzgGc5iumNCurtTpVM5X3_3TK95qbQpc",
+            authDomain: "vroomiam.firebaseapp.com",
+            databaseURL: "https://vroomiam-default-rtdb.europe-west1.firebasedatabase.app", // Lien vers ta base France
+            projectId: "vroomiam",
+            storageBucket: "vroomiam.firebasestorage.app",
+            messagingSenderId: "13433812189",
+            appId: "1:13433812189:web:40b8ba4b14cb0a4deb9734"
+        };
+
+        const app = initializeApp(firebaseConfig);
+        const db = getDatabase(app);
+
+        // ÉCOUTER LES COMMANDES EN TEMPS RÉEL
+        const ordersRef = ref(db, 'orders');
+        onValue(ordersRef, (snapshot) => {
+            const data = snapshot.val();
+            const container = document.getElementById('orders-list');
+            container.innerHTML = '';
+
+            if (data) {
+                Object.keys(data).reverse().forEach(id => {
+                    const order = data[id];
+                    const card = `
+                        <div class="bg-gray-800 p-4 rounded-xl border-l-4 ${order.status === 'En cours' ? 'border-orange-500' : 'border-green-500'} mb-4 shadow-lg animate-pulse-once">
+                            <div class="flex justify-between items-start">
+                                <div>
+                                    <h3 class="text-orange-500 font-bold text-lg">Commande #${id.slice(-4)}</h3>
+                                    <p class="text-white font-medium">${order.items}</p>
+                                    <p class="text-gray-400 text-sm">Client : ${order.clientName} (${order.phone})</p>
+                                    <p class="text-gray-400 text-sm">📍 ${order.address}</p>
+                                </div>
+                                <div class="text-right">
+                                    <span class="bg-orange-900 text-orange-200 text-xs px-2 py-1 rounded-full">${order.status}</span>
+                                    <p class="text-white font-bold mt-2">${order.total} FCFA</p>
+                                </div>
+                            </div>
+                            <div class="mt-4 flex gap-2">
+                                <button onclick="updateStatus('${id}', 'Livré')" class="bg-green-600 hover:bg-green-700 text-white text-xs px-4 py-2 rounded-lg transition">Marquer comme livré</button>
+                                <button onclick="window.open('https://wa.me/${order.phone}')" class="bg-blue-600 text-white text-xs px-4 py-2 rounded-lg">Appeler Client</button>
+                            </div>
+                        </div>
+                    `;
+                    container.innerHTML += card;
+                });
+            } else {
+                container.innerHTML = '<p class="text-gray-500 text-center py-10">Aucune commande pour le moment...</p>';
+            }
+        });
+
+        window.updateStatus = (id, newStatus) => {
+            update(ref(db, 'orders/' + id), { status: newStatus });
+        };
+    </script>
     <style>
-        .status-pulse { animation: pulse 2s infinite; }
-        @keyframes pulse { 0% { opacity: 1; } 50% { opacity: 0.5; } 100% { opacity: 1; } }
+        @keyframes pulse-once {
+            0% { transform: scale(1); }
+            50% { transform: scale(1.02); }
+            100% { transform: scale(1); }
+        }
+        .animate-pulse-once { animation: pulse-once 0.5s ease-in-out; }
     </style>
 </head>
-<body class="bg-gray-900 text-white font-sans" x-data="vroumAdmin">
+<body class="bg-black text-white min-h-screen font-sans">
 
-    <nav class="bg-black p-4 border-b border-orange-500/30 flex justify-between items-center">
-        <h1 class="text-xl font-black italic text-orange-500 text-uppercase">VROUMIAM ADMIN</h1>
-        <div class="flex items-center space-x-4 text-[10px] font-bold">
-            <span class="flex items-center"><span class="w-2 h-2 bg-green-500 rounded-full mr-2 status-pulse"></span> SYSTEME LIVE</span>
+    <nav class="bg-gray-900 border-b border-orange-500/30 p-4 sticky top-0 z-50">
+        <div class="flex justify-between items-center max-w-4xl mx-auto">
+            <h1 class="text-2xl font-black text-orange-500 tracking-tighter">VROUMIAM <span class="text-white text-xs font-light tracking-normal border border-white px-1 ml-1">ADMIN</span></h1>
+            <div id="status-dot" class="flex items-center gap-2 text-xs text-green-400">
+                <div class="w-2 h-2 bg-green-500 rounded-full animate-ping"></div> Live
+            </div>
         </div>
     </nav>
 
-    <div class="max-w-6xl mx-auto p-4 grid grid-cols-1 lg:grid-cols-3 gap-6">
-        
-        <div class="lg:col-span-2 space-y-4">
-            <h2 class="text-sm font-black uppercase tracking-widest text-gray-500">Commandes à traiter</h2>
-            
-            <template x-if="orders.length === 0">
-                <div class="bg-gray-800/50 border border-dashed border-gray-700 p-10 rounded-3xl text-center">
-                    <p class="text-gray-500 italic">Aucune commande pour le moment...</p>
-                </div>
-            </template>
-
-            <template x-for="order in orders" :key="order.id">
-                <div class="bg-gray-800 rounded-[2rem] p-6 border border-white/5 shadow-2xl fade-in">
-                    <div class="flex justify-between items-start mb-4">
-                        <div>
-                            <span class="bg-orange-500 text-black text-[10px] font-black px-2 py-1 rounded uppercase" x-text="order.restaurant"></span>
-                            <h3 class="text-xl font-bold mt-2" x-text="order.items"></h3>
-                        </div>
-                        <div class="text-right">
-                            <p class="text-2xl font-black text-orange-500" x-text="order.total + ' F'"></p>
-                            <p class="text-[10px] text-gray-400" x-text="order.time"></p>
-                        </div>
-                    </div>
-
-                    <div class="grid grid-cols-2 gap-4 mb-6 text-sm">
-                        <div class="bg-black/30 p-3 rounded-xl">
-                            <p class="text-gray-500 text-[10px] uppercase font-black">Client</p>
-                            <p class="font-bold" x-text="order.clientName"></p>
-                            <p class="text-blue-400 underline text-xs" x-text="order.clientPhone"></p>
-                        </div>
-                        <div class="bg-black/30 p-3 rounded-xl">
-                            <p class="text-gray-500 text-[10px] uppercase font-black">Zone</p>
-                            <p class="font-bold text-orange-400" x-text="order.zone"></p>
-                        </div>
-                    </div>
-
-                    <div class="flex space-x-2">
-                        <button @click="verifyPayment(order)" class="flex-1 bg-green-600 hover:bg-green-500 py-3 rounded-xl font-black uppercase text-xs transition">
-                            Vérifier MoMo
-                        </button>
-                        <button @click="dispatchOrder(order)" class="flex-1 bg-white text-black hover:bg-orange-500 hover:text-white py-3 rounded-xl font-black uppercase text-xs transition">
-                            Affecter Livreur
-                        </button>
-                    </div>
-                </div>
-            </template>
-        </div>
-
-        <div class="space-y-4">
-            <h2 class="text-sm font-black uppercase tracking-widest text-gray-500">Livreurs (25 max)</h2>
-            <div class="bg-black/50 border border-white/5 rounded-[2rem] p-4 h-[600px] overflow-y-auto no-scrollbar">
-                <template x-for="livreur in livreurs" :key="livreur.id">
-                    <div class="flex items-center justify-between p-3 border-b border-white/5 hover:bg-white/5 transition rounded-xl">
-                        <div class="flex items-center space-x-3">
-                            <div class="w-8 h-8 rounded-full bg-orange-500/20 flex items-center justify-center font-bold text-orange-500 text-xs" x-text="livreur.nom"></div>
-                            <div>
-                                <p class="text-sm font-bold text-white" x-text="livreur.nom"></p>
-                                <p class="text-[9px] text-gray-500 font-bold uppercase" x-text="livreur.zone"></p>
-                            </div>
-                        </div>
-                        <span :class="livreur.online ? 'bg-green-500' : 'bg-gray-700'" class="w-2 h-2 rounded-full"></span>
-                    </div>
-                </template>
-                
-                <button class="w-full mt-4 border border-dashed border-gray-700 py-4 rounded-xl text-xs text-gray-500 font-bold hover:border-orange-500 hover:text-orange-500 transition">
-                    + Ajouter un livreur
-                </button>
+    <main class="p-4 max-w-4xl mx-auto">
+        <div class="grid grid-cols-2 gap-4 mb-8">
+            <div class="bg-gray-900 p-4 rounded-2xl border border-gray-800">
+                <p class="text-gray-400 text-sm">Commandes du jour</p>
+                <p class="text-2xl font-bold text-white">Prêt</p>
+            </div>
+            <div class="bg-gray-900 p-4 rounded-2xl border border-gray-800">
+                <p class="text-gray-400 text-sm">Chiffre d'affaires</p>
+                <p class="text-2xl font-bold text-orange-500">-- FCFA</p>
             </div>
         </div>
-    </div>
 
-    <script>
-        document.addEventListener('alpine:init', () => {
-            Alpine.data('vroumAdmin', () => ({
-                // TA BASE DE DONNÉES LIVREURS (Modifie ici !)
-                livreurs: [
-                    { id: 1, nom: "Marc Kouassi", phone: "22961000000", zone: "Fidjrossè", online: true },
-                    { id: 2, nom: "Jean Soglo", phone: "22997000000", zone: "Akpakpa", online: true },
-                    { id: 3, nom: "Abel Dossou", phone: "22960000000", zone: "Calavi", online: false },
-                    // Tu peux en ajouter jusqu'à 25 comme ça...
-                ],
+        <h2 class="text-xl font-bold mb-4 flex items-center gap-2">
+            📦 Commandes entrantes
+        </h2>
 
-                // SIMULATION DE COMMANDES (Pour tester l'affichage)
-                orders: [
-                    { 
-                        id: 101, 
-                        restaurant: "Le Porc de Fidjrossè", 
-                        items: "2kg Porc Grillé + Alloco", 
-                        total: 12500, 
-                        clientName: "M. Koffi", 
-                        clientPhone: "22995959595",
-                        zone: "Haie Vive",
-                        time: "Il y a 2 min"
-                    }
-                ],
+        <div id="orders-list">
+            <div class="text-center py-10">
+                <div class="inline-block animate-spin rounded-full h-8 w-8 border-t-2 border-orange-500 mb-2"></div>
+                <p class="text-gray-500 text-sm">Connexion à Firebase...</p>
+             </div>
+        </div>
+    </main>
 
-                verifyPayment(order) {
-                    alert("Ouvre ton appli MoMo ! Si tu as reçu " + order.total + " F de " + order.clientName + ", tu peux affecter le livreur.");
-                },
-
-                dispatchOrder(order) {
-                    // Logique de tri simple : On cherche le livreur de la zone
-                    const meilleurLivreur = this.livreurs.find(l => l.online && l.zone === "Fidjrossè") || this.livreurs;
-                    
-                    const msg = `*MISSION VROUMIAM*%0A` +
-                                `------------------%0A` +
-                                `Resto: ${order.restaurant}%0A` +
-                                `Commande: ${order.items}%0A` +
-                                `Client: ${order.clientName} (${order.clientPhone})%0A` +
-                                `Zone: ${order.zone}%0A` +
-                                `------------------%0A` +
-                                `*Tarif Livraison:* À encaisser au client.`;
-                    
-                    window.open(`https://wa.me/${meilleurLivreur.phone}?text=${msg}`, '_blank');
-                }
-            }));
-        });
-    </script>
 </body>
 </html>
