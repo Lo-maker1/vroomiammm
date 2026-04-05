@@ -22,104 +22,31 @@
         const app = initializeApp(firebaseConfig);
         const db = getDatabase(app);
 
-        // On garde tes numéros pour WhatsApp
         const driverNumbers = {
             'Marc': '22990000000', 
             'Boris': '2290195480000',
             'Yasmine': '22992000000'
         };
 
-        // Variable globale pour stocker l'état des livreurs depuis Firebase
         let globalLivreurs = {};
+        let globalOrders = {};
 
-        window.closeDay = () => {
-            const currentCA = document.getElementById('stat-ca').innerText;
-            if(confirm(`Voulez-vous clôturer la journée ? \nTotal encaissé : ${currentCA}`)) {
-                const ordersRef = ref(db, 'orders');
-                onValue(ordersRef, (snapshot) => {
-                    const data = snapshot.val();
-                    if(data) {
-                        Object.keys(data).forEach(id => {
-                            if(data[id].status === 'Livré') {
-                                update(ref(db, 'orders/' + id), { archived: true });
-                            }
-                        });
-                    }
-                }, { onlyOnce: true });
-                alert("Journée clôturée ! 🛵💨");
-            }
-        };
-
-        window.sendToDriver = async (id, name, phone, address, items, total, gps, restauGPS, restaurant) => {
-            const selectEl = document.getElementById(`select-${id}`);
-            const driverId = selectEl.value; // On récupère l'ID (ex: L1)
-            
-            if(!driverId) return alert("Choisis un livreur !");
-            
-            const driverName = globalLivreurs[driverId].nom;
-            const num = driverNumbers[driverName];
-            
-            // 1. Marquer le livreur comme OCCUPÉ dans Firebase
-            await update(ref(db, 'livreurs/' + driverId), { disponible: false });
-
-            // 2. Mettre à jour la commande avec le nom du livreur et son ID
-            await update(ref(db, 'orders/' + id), { 
-                driver: driverName, 
-                driverId: driverId,
-                status: 'En route' 
-            });
-
-            // 3. Préparer et envoyer le message WhatsApp
-            const mapsLinkClient = (gps && gps.includes('http')) ? gps : `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(address)}`;
-            const mapsLinkResto = (restauGPS && restauGPS.includes('http')) ? restauGPS : 'Position non définie';
-
-            const msg = `🚀 *COURSE VROUMIAM* 🛵\n` +
-                        `------------------------------\n` +
-                        `🏢 *RESTO :* ${restaurant || 'Vroumiam'}\n` +
-                        `🍔 *MENU :* ${items}\n` +
-                        `💰 *CASH :* ${total} F\n\n` +
-                        `👤 *CLIENT :* ${name}\n` +
-                        `📍 *QUARTIER :* ${address}\n\n` +
-                        `🚩 *GPS RESTO :*\n${mapsLinkResto}\n\n` +
-                        `📍 *GPS CLIENT :*\n${mapsLinkClient}\n` +
-                        `------------------------------`;
-            
-            window.open(`https://wa.me/${num}?text=${encodeURIComponent(msg)}`, '_blank');
-        };
-
-        window.updateStatus = async (id, newStatus, driverId) => {
-            // Si on marque comme livré, on libère le livreur dans Firebase
-            if(newStatus === 'Livré' && driverId) {
-                await update(ref(db, 'livreurs/' + driverId), { disponible: true });
-            }
-            update(ref(db, 'orders/' + id), { status: newStatus });
-        };
-
-        // ÉCOUTE DES LIVREURS (Pour la liste dynamique)
-        const livreursRef = ref(db, 'livreurs');
-        onValue(livreursRef, (snapshot) => {
-            globalLivreurs = snapshot.val() || {};
-            // On ne peut pas facilement rafraîchir uniquement le select sans re-render
-            // Firebase onValue sur orders s'en chargera automatiquement après l'update
-        });
-
-        const ordersRef = ref(db, 'orders');
-        onValue(ordersRef, (snapshot) => {
-            const data = snapshot.val();
+        // FONCTION DE DESSIN UNIQUE POUR TOUT SYNCHRONISER
+        function refreshUI() {
             const container = document.getElementById('orders-list');
-            
+            if (!container) return;
+
             let totalCA = 0;
             let activeOrders = 0;
             let driverStats = { 'Marc': 0, 'Boris': 0, 'Yasmine': 0 };
 
             container.innerHTML = '';
 
-            if (data) {
-                Object.keys(data).reverse().forEach(id => {
-                    const order = data[id];
+            if (globalOrders) {
+                Object.keys(globalOrders).reverse().forEach(id => {
+                    const order = globalOrders[id];
                     if (order.archived === true) return;
 
-                    const hasGPS = order.gps && order.gps.includes('http');
                     if (order.status === 'Livré') {
                         totalCA += parseInt(order.total) || 0;
                         if (order.driver && driverStats[order.driver] !== undefined) driverStats[order.driver]++;
@@ -127,11 +54,11 @@
                         activeOrders++;
                     }
 
-                    // Génération des options du select (uniquement les dispos ou celui déjà assigné)
+                    // Génération des options (on boucle sur globalLivreurs)
                     let driverOptions = `<option value="">-- Livreur --</option>`;
                     Object.keys(globalLivreurs).forEach(lKey => {
                         const l = globalLivreurs[lKey];
-                        // RÈGLE : On affiche si le livreur est disponible OU si c'est lui qui a déjà la commande
+                        // Règle : Afficher si dispo OU si c'est déjà son livreur
                         if (l.disponible === true || order.driverId === lKey) {
                             driverOptions += `<option value="${lKey}" ${order.driverId === lKey ? 'selected' : ''}>🛵 ${l.nom}</option>`;
                         }
@@ -150,8 +77,8 @@
                                         <p>👤 <span class="text-white">${order.clientName}</span> (${order.phone})</p>
                                         <p>📍 ${order.address}</p>
                                         <div class="flex gap-2 mt-2">
-                                            ${hasGPS ? `<a href="${order.gps}" target="_blank" class="inline-flex items-center gap-2 bg-blue-600/20 text-blue-400 px-3 py-2 rounded-xl text-[10px] font-black uppercase border border-blue-600/30 font-black italic">📍 Client</a>` : ''}
-                                            ${order.restauGPS ? `<a href="${order.restauGPS}" target="_blank" class="inline-flex items-center gap-2 bg-orange-500/20 text-orange-500 px-3 py-2 rounded-xl text-[10px] font-black uppercase border border-orange-500/30 font-black italic text-orange-500">🏢 Resto</a>` : ''}
+                                            ${(order.gps && order.gps.includes('http')) ? `<a href="${order.gps}" target="_blank" class="inline-flex items-center gap-2 bg-blue-600/20 text-blue-400 px-3 py-2 rounded-xl text-[10px] font-black uppercase border border-blue-600/30 italic font-black">📍 Client</a>` : ''}
+                                            ${order.restauGPS ? `<a href="${order.restauGPS}" target="_blank" class="inline-flex items-center gap-2 bg-orange-500/20 text-orange-500 px-3 py-2 rounded-xl text-[10px] font-black uppercase border border-orange-500/30 italic font-black">🏢 Resto</a>` : ''}
                                         </div>
                                     </div>
                                 </div>
@@ -179,20 +106,55 @@
 
                 document.getElementById('stat-ca').innerText = totalCA.toLocaleString() + ' F';
                 document.getElementById('stat-active').innerText = activeOrders;
-                
                 document.getElementById('score-marc').innerText = driverStats['Marc'];
                 document.getElementById('score-boris').innerText = driverStats['Boris'];
                 document.getElementById('score-yasmine').innerText = driverStats['Yasmine'];
             }
+        }
+
+        onValue(ref(db, 'livreurs'), (snapshot) => {
+            globalLivreurs = snapshot.val() || {};
+            refreshUI(); 
         });
+
+        onValue(ref(db, 'orders'), (snapshot) => {
+            globalOrders = snapshot.val() || {};
+            refreshUI();
+        });
+
+        window.sendToDriver = async (id, name, phone, address, items, total, gps, restauGPS, restaurant) => {
+            const driverId = document.getElementById(`select-${id}`).value;
+            if(!driverId) return alert("Choisis un livreur !");
+            
+            const driverName = globalLivreurs[driverId].nom;
+            const num = driverNumbers[driverName];
+
+            await update(ref(db, 'livreurs/' + driverId), { disponible: false });
+            await update(ref(db, 'orders/' + id), { driver: driverName, driverId: driverId, status: 'En route' });
+
+            const msg = `🚀 *COURSE VROUMIAM* 🛵\n🏢 *RESTO :* ${restaurant}\n🍔 *MENU :* ${items}\n💰 *CASH :* ${total} F\n👤 *CLIENT :* ${name}\n📍 *QUARTIER :* ${address}`;
+            window.open(`https://wa.me/${num}?text=${encodeURIComponent(msg)}`, '_blank');
+        };
+
+        window.updateStatus = async (id, newStatus, dId) => {
+            if(newStatus === 'Livré' && dId) await update(ref(db, 'livreurs/' + dId), { disponible: true });
+            update(ref(db, 'orders/' + id), { status: newStatus });
+        };
+
+        window.closeDay = () => {
+            if(confirm("Clôturer la journée ?")) {
+                Object.keys(globalOrders).forEach(id => {
+                    if(globalOrders[id].status === 'Livré') update(ref(db, 'orders/' + id), { archived: true });
+                });
+                alert("Journée clôturée !");
+            }
+        };
     </script>
 </head>
 <body class="bg-[#050505] text-white min-h-screen font-sans">
-
     <nav class="bg-black/60 backdrop-blur-xl border-b border-white/5 p-6 sticky top-0 z-50 text-center">
         <h1 class="text-3xl font-black text-orange-500 italic uppercase">VROUMIAM ADMIN</h1>
     </nav>
-
     <main class="p-6 max-w-2xl mx-auto pb-20">
         <div class="grid grid-cols-2 gap-3 mb-6">
             <div class="bg-gray-900 border border-white/5 p-5 rounded-[1.5rem] text-center shadow-xl">
@@ -204,7 +166,6 @@
                 <p id="stat-active" class="text-2xl font-black text-white italic">0</p>
             </div>
         </div>
-
         <div class="bg-gray-900 border border-white/5 p-4 rounded-[1.5rem] mb-10 shadow-xl">
             <p class="text-[9px] text-center text-gray-500 font-black uppercase tracking-[0.2em] mb-4 italic">Performance Livreurs</p>
             <div class="flex justify-between items-center px-4">
@@ -224,12 +185,10 @@
                 </div>
             </div>
         </div>
-
         <div class="flex justify-between items-center mb-8">
             <h2 class="text-2xl font-black italic uppercase tracking-tighter text-orange-500 underline decoration-2 underline-offset-8">📦 Commandes</h2>
-            <button onclick="closeDay()" class="bg-red-600/10 border border-red-600/30 text-red-500 text-[9px] font-black uppercase px-4 py-2 rounded-full hover:bg-red-600 hover:text-white transition active:scale-95">🔒 Clôturer</button>
+            <button onclick="closeDay()" class="bg-red-600/10 border border-red-600/30 text-red-500 text-[9px] font-black uppercase px-4 py-2 rounded-full transition active:scale-95">🔒 Clôturer</button>
         </div>
-
         <div id="orders-list">
             <div class="text-center py-20 text-gray-500 font-bold uppercase text-xs">Chargement du flux...</div>
         </div>
