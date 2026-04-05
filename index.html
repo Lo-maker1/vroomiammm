@@ -7,34 +7,6 @@
     <script src="https://cdn.tailwindcss.com"></script>
     <script defer src="https://unpkg.com/alpinejs@3.x.x/dist/cdn.min.js"></script>
     
-    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-database.js"></script>
-
-    <script>
-        // Configuration Firebase pour VROUMIAM
-        const firebaseConfig = {
-            apiKey: "AIzaSyBuzgGc5iumNCurtTpVM5X3_3TK95qbQpc",
-            authDomain: "vroomiam.firebaseapp.com",
-            databaseURL: "https://vroomiam-default-rtdb.europe-west1.firebasedatabase.app",
-            projectId: "vroomiam",
-            storageBucket: "vroomiam.firebasestorage.app",
-            messagingSenderId: "13433812189",
-            appId: "1:13433812189:web:40b8ba4b14cb0a4deb9734"
-        };
-        // Initialisation Firebase
-let app;
-try {
-    app = firebase.initializeApp(firebaseConfig);
-    console.log(« ✅ Firebase initialisé avec succès »);
-} catch (error) {
-    console.error(« ❌ Erreur d’initialisation Firebase : », error);
-}
-        
-        // Initialisation de la base de données
-        firebase.initializeApp(firebaseConfig);
-        const database = firebase.database();
-    </script>
-
     <style>
         .no-scrollbar::-webkit-scrollbar { display: none; }
         .glass { background: rgba(255, 255, 255, 0.03); backdrop-filter: blur(10px); border: 1px solid rgba(255, 255, 255, 0.05); }
@@ -59,10 +31,10 @@ try {
     get total() { return this.cart.reduce((sum, p) => sum + p.price, 0) + (this.delivery === 'express' ? 1000 : 500); },
 
     async finalizeOrder() {
-        if(!this.name || !this.phone || !this.address) return alert('Veuillez remplir toutes vos informations !');
+        if(!this.name || !this.phone || !this.address) return alert('Remplis tes infos !');
         this.isSending = true;
 
-        // Préparation des données pour ton Tableau de Bord Admin
+        // Préparation des données EXACTES pour ton tableau de bord
         const orderData = {
             clientName: this.name,
             phone: this.phone,
@@ -72,29 +44,32 @@ try {
             total: this.total,
             delivery: this.delivery,
             timestamp: Date.now(),
-            status: 'En cours',
-            gps: 'Position par défaut'
+            status: 'En cours'
         };
 
         try {
-            // Envoi vers le dossier 'orders' de Firebase
-            await database.ref('orders').push(orderData);
+            // MÉTHODE DIRECTE (FETCH) : Rien ne peut bloquer ça
+            const url = 'https://vroomiam-default-rtdb.europe-west1.firebasedatabase.app/orders.json';
             
-            alert('🚀 VROUM ! Commande envoyée au tableau de bord.');
-            
-            // Réinitialisation du site
-            this.cart = [];
-            this.showCart = false;
-            this.step = 1;
-            this.name = ''; 
-            this.phone = ''; 
-            this.address = '';
-            
-        } catch(e) { 
+            const response = await fetch(url, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(orderData)
+            });
+
+            if (response.ok) {
+                alert('🚀 VROUM ! Commande envoyée au tableau de bord.');
+                // RESET TOTAL
+                this.cart = []; this.showCart = false; this.step = 1;
+                this.name = ''; this.phone = ''; this.address = '';
+            } else {
+                throw new Error('Erreur Serveur');
+            }
+        } catch (e) {
+            alert('Erreur de connexion. Vérifie tes Rules Firebase (Read/Write = true)');
             console.error(e);
-            alert('Erreur de connexion : Vérifie tes Rules Firebase !'); 
-        } finally { 
-            this.isSending = false; 
+        } finally {
+            this.isSending = false;
         }
     }
 }">
@@ -105,15 +80,14 @@ try {
             <p class="text-[10px] text-gray-400 uppercase tracking-widest">Cotonou Prestige</p>
         </div>
         <button @click="showCart = true" class="glass p-3 rounded-2xl relative">
-            <span class="text-xl">🛍️</span>
-            <span x-show="cart.length > 0" class="absolute -top-1 -right-1 bg-orange-500 text-white text-[10px] font-bold h-5 w-5 flex items-center justify-center rounded-full border-2 border-black" x-text="cart.length"></span>
+            🛍️ <span x-show="cart.length > 0" class="absolute -top-1 -right-1 bg-orange-500 text-white text-[10px] h-5 w-5 flex items-center justify-center rounded-full border-2 border-black" x-text="cart.length"></span>
         </button>
     </nav>
 
     <div class="flex gap-4 overflow-x-auto px-6 py-6 no-scrollbar">
         <template x-for="cat in ['all', 'burger', 'pizza', 'local']">
             <button @click="category = cat" 
-                :class="category === cat ? 'bg-orange-500 text-black shadow-lg' : 'glass text-gray-400'"
+                :class="category === cat ? 'bg-orange-500 text-black shadow-lg shadow-orange-500/20' : 'glass text-gray-400'"
                 class="px-8 py-3 rounded-2xl font-bold transition-all"
                 x-text="cat === 'all' ? 'Tout' : cat">
             </button>
@@ -131,7 +105,7 @@ try {
                         <h3 class="text-2xl font-black" x-text="restau.name"></h3>
                         <span class="text-orange-500 font-black text-xl" x-text="restau.price + ' FCFA'"></span>
                     </div>
-                    <button @click="addToCart(restau)" class="bg-orange-500 text-black h-14 w-14 rounded-2xl flex items-center justify-center font-black text-2xl active:scale-90 transition">+</button>
+                    <button @click="addToCart(restau)" class="bg-orange-500 text-black h-14 w-14 rounded-2xl flex items-center justify-center font-black text-2xl active:scale-90 transition shadow-xl shadow-orange-500/20">+</button>
                 </div>
             </div>
         </template>
@@ -139,7 +113,7 @@ try {
 
     <div x-show="showCart" class="fixed inset-0 z-50 flex flex-col bg-black/95 backdrop-blur-2xl p-6" x-transition>
         <div class="flex justify-between items-center mb-8">
-            <button @click="showCart = false; step = 1" class="text-gray-400 text-lg">Retour</button>
+            <button @click="showCart = false; step = 1" class="text-gray-400 text-lg">Annuler</button>
             <div class="flex gap-2">
                 <div :class="step >= 1 ? 'bg-orange-500' : 'bg-gray-800'" class="h-1 w-8 rounded-full"></div>
                 <div :class="step >= 2 ? 'bg-orange-500' : 'bg-gray-800'" class="h-1 w-8 rounded-full"></div>
@@ -148,7 +122,7 @@ try {
         </div>
 
         <div x-show="step === 1" class="flex flex-col h-full">
-            <h2 class="text-4xl font-black mb-8 italic">MON <span class="text-orange-500">PANIER</span></h2>
+            <h2 class="text-4xl font-black mb-8 italic italic">MON <span class="text-orange-500">PANIER</span></h2>
             <div class="flex-1 overflow-y-auto space-y-4 no-scrollbar">
                 <template x-for="(item, index) in cart" :key="item.id_order">
                     <div class="glass p-5 rounded-[2rem] flex justify-between items-center">
@@ -170,7 +144,7 @@ try {
         </div>
 
         <div x-show="step === 2" class="flex flex-col h-full">
-            <h2 class="text-4xl font-black mb-8 italic text-orange-500">INFOS CLIENT</h2>
+            <h2 class="text-4xl font-black mb-8 italic text-orange-500 uppercase italic">INFOS CLIENT</h2>
             <div class="space-y-4">
                 <input x-model="name" type="text" placeholder="Ton Nom Complet" class="w-full glass p-6 rounded-2xl outline-none focus:border-orange-500 transition">
                 <input x-model="phone" type="tel" placeholder="Numéro Moov ou MTN" class="w-full glass p-6 rounded-2xl outline-none focus:border-orange-500 transition">
@@ -183,7 +157,7 @@ try {
 
                 <button @click="finalizeOrder" :disabled="isSending" class="w-full bg-white text-black font-black py-6 rounded-[2rem] text-xl mt-6 active:scale-95 transition-all">
                     <span x-show="!isSending">VALIDER LA COMMANDE 🛵</span>
-                    <span x-show="isSending">ENVOI EN COURS...</span>
+                    <span x-show="isSending" class="flex items-center gap-2">ENVOI...</span>
                 </button>
             </div>
         </div>
