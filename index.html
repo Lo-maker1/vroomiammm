@@ -20,11 +20,11 @@
     view: 'restaurants',
     selectedRestau: null,
     step: 1,
-    // MÉMOIRE LOCALE : Récupération auto du nom, tel et quartier
     name: localStorage.getItem('vroum_name') || '', 
     phone: localStorage.getItem('vroum_phone') || '', 
     address: localStorage.getItem('vroum_address') || '', 
-    delivery: 'express', isSending: false,
+    delivery: 'express', 
+    isSending: false,
     paymentMethod: 'MTN',
     orderStatus: 'Cuisine',
     
@@ -32,19 +32,19 @@
         { 
             id: 1, name: 'Grill', 
             img: 'https://images.unsplash.com/photo-1571091718767-18b5b1457add?w=600',
-            gps: 'https://maps.app.goo.gl/fTCbPmB6dS8ica9k9?g_st=ii', ',
+            gps: 'https://www.google.com/maps?q=6.3703,2.3912',
             menu: [ { name: 'Whopper Classic', price: 3500 }, { name: 'Double Cheese', price: 4500 } ]
         },
         { 
             id: 2, name: 'Pizza Relax', 
             img: 'https://images.unsplash.com/photo-1513104890138-7c749659a591?w=600',
-            gps: 'https://maps.google.com/?q=Pizza+Relax+Cotonou', ',
+            gps: 'https://www.google.com/maps?q=6.3600,2.4000',
             menu: [ { name: 'Pizza Margherita', price: 5000 }, { name: 'Pizza Reine', price: 6500 } ]
         },
         { 
             id: 3, name: 'Maquis du Port', 
             img: 'https://images.unsplash.com/photo-1567620905732-2d1ec7bb7445?w=600',
-            gps: 'https://maps.google.com/?q=Maquis+du+Port+Cotonou', ',
+            gps: 'https://www.google.com/maps?q=6.3500,2.4100',
             menu: [ { name: 'Atassi Complet', price: 2500 }, { name: 'Igname Pilée', price: 3000 } ]
         }
     ],
@@ -52,7 +52,6 @@
     tempItem: null,
     options: { sauce: false, piment: false, boisson: false },
 
-    // FONCTION PARRAINAGE WHATSAPP
     shareVroumiam() {
         const text = `🔥 *VROUMIAM* : L'élite de la livraison à Cotonou ! \n\nCommande via ce lien et dis que tu viens de la part de *${this.name || 'un ami'}* pour avoir un bonus ! 🛵💨\n\n👉 https://vroomiam.web.app`;
         window.open(`https://wa.me/?text=${encodeURIComponent(text)}`, '_blank');
@@ -76,7 +75,6 @@
         if(!this.name || !this.phone || !this.address) return alert('Remplis tes infos !');
         this.isSending = true;
 
-        // SAUVEGARDE LOCALE DES INFOS
         localStorage.setItem('vroum_name', this.name);
         localStorage.setItem('vroum_phone', this.phone);
         localStorage.setItem('vroum_address', this.address);
@@ -104,9 +102,10 @@
                 method: 'POST', body: JSON.stringify(orderData)
             });
             if (response.ok) {
-                this.view = 'tracking'; // Bascule sur la vue de suivi
+                this.view = 'tracking'; 
                 this.showCart = false;
-                setTimeout(() => { this.orderStatus = 'Route'; }, 7000); // Simulation du trajet
+                this.orderStatus = 'Cuisine';
+                setTimeout(() => { this.orderStatus = 'Route'; }, 7000);
             }
         } catch (e) { alert('Erreur connexion'); } finally { this.isSending = false; }
     }
@@ -122,7 +121,7 @@
     <main x-show="view === 'restaurants'" class="px-6 pb-24 space-y-8 pt-6">
         <div class="flex justify-between items-end">
             <h2 class="text-xl font-black italic uppercase text-gray-400">Restaurants</h2>
-            <p class="text-[10px] text-orange-500 font-bold uppercase italic" x-show="name" x-text="'Content de vous revoir, ' + name"></p>
+            <p class="text-[10px] text-orange-500 font-bold uppercase italic" x-show="name" x-text="'Hello, ' + name"></p>
         </div>
 
         <div @click="shareVroumiam()" class="p-6 bg-orange-500 rounded-[2.5rem] flex items-center justify-between cursor-pointer active:scale-95 transition shadow-xl border border-white/10">
@@ -160,12 +159,11 @@
         </div>
     </main>
 
-    <main x-show="view === 'tracking'" class="fixed inset-0 bg-[#050505] z- flex flex-col items-center justify-start p-8 text-center overflow-y-auto no-scrollbar" x-transition>
+    <main x-show="view === 'tracking'" class="fixed inset-0 bg-[#050505] z-50 flex flex-col items-center justify-start p-8 text-center overflow-y-auto no-scrollbar" x-transition>
         <div class="w-20 h-20 bg-orange-500 rounded-full flex items-center justify-center mb-6 mt-10 pulse">
             <span class="text-3xl">🛵</span>
         </div>
         <h2 class="text-3xl font-black italic uppercase mb-2">VROUM... Lancé !</h2>
-        
         <div class="w-full max-w-xs bg-gray-900 h-2 rounded-full mb-4 overflow-hidden border border-white/5 mt-8">
             <div class="bg-orange-500 h-full progress-bar" :style="orderStatus === 'Cuisine' ? 'width: 33%' : (orderStatus === 'Route' ? 'width: 66%' : 'width: 100%')"></div>
         </div>
@@ -174,18 +172,17 @@
             <span :class="orderStatus === 'Route' ? 'text-orange-500' : 'text-gray-600'">En route</span>
             <span class="text-gray-600">Arrivé</span>
         </div>
-
+        
         <div class="bg-orange-500 p-6 rounded-[2.5rem] w-full max-w-xs mb-8 shadow-2xl">
             <p class="text-black font-black uppercase text-[11px] mb-1">🎁 Gagne 500 F !</p>
-            <p class="text-black/80 text-[10px] font-bold leading-tight mb-4 italic">Invite un ami sur VROUMIAM. S'il commande, on t'offre une réduction sur ta prochaine course !</p>
-            <button @click="shareVroumiam()" class="w-full bg-black text-white font-black py-4 rounded-2xl text-[11px] uppercase italic active:scale-95 transition shadow-lg">Partager sur WhatsApp ➔</button>
+            <p class="text-black/80 text-[10px] font-bold leading-tight mb-4 italic text-center">Invite un ami sur VROUMIAM. S'il commande, tu gagnes un bonus !</p>
+            <button @click="shareVroumiam()" class="w-full bg-black text-white font-black py-4 rounded-2xl text-[11px] uppercase italic active:scale-95 transition">Partager sur WhatsApp ➔</button>
         </div>
 
         <div class="glass p-5 rounded-[2rem] w-full max-w-xs border-orange-500/10 mb-8 text-center">
             <p class="text-gray-500 text-[9px] font-black uppercase mb-1">Résumé</p>
             <p class="font-bold italic text-white text-sm uppercase" x-text="total + ' F — ' + selectedRestau?.name"></p>
         </div>
-
         <button @click="view = 'restaurants'; cart = [];" class="text-gray-600 font-black uppercase text-[10px] tracking-widest underline underline-offset-4">Retour au menu</button>
     </main>
 
@@ -199,24 +196,25 @@
             </div>
             <div class="flex gap-3">
                 <button @click="tempItem = null" class="flex-1 py-4 text-gray-500 font-black uppercase text-xs">Annuler</button>
-                <button @click="confirmAdd()" class="flex-2 bg-orange-500 text-black px-8 py-4 rounded-2xl font-black uppercase italic shadow-lg active:scale-95">Ajouter</button>
+                <button @click="confirmAdd()" class="flex-2 bg-orange-500 text-black px-8 py-4 rounded-2xl font-black uppercase italic active:scale-95">Ajouter</button>
             </div>
         </div>
     </div>
 
     <div x-show="showCart" class="fixed inset-0 z-50 bg-black/95 p-6 flex flex-col" x-transition>
-        <div class="flex justify-between mb-8"><button @click="showCart = false; step = 1" class="text-gray-400 font-bold uppercase text-xs tracking-widest">Retour</button></div>
+        <div class="flex justify-between mb-8"><button @click="showCart = false; step = 1" class="text-gray-400 font-bold uppercase text-xs">Retour</button></div>
+        
         <div x-show="step === 1" class="flex flex-col h-full">
             <h2 class="text-4xl font-black mb-8 italic uppercase text-white">Panier</h2>
             <div class="flex-1 overflow-y-auto space-y-4 no-scrollbar">
-                <template x-for="(item, index) in cart">
+                <template x-for="(item, index) in cart" :key="index">
                     <div class="glass p-5 rounded-[2rem] flex justify-between items-center">
                         <div><p class="font-bold text-lg italic" x-text="item.name"></p><p class="text-orange-500 font-black" x-text="item.price + ' F'"></p></div>
                         <button @click="cart.splice(index, 1)" class="text-red-500 text-xs font-bold uppercase">Retirer</button>
                     </div>
                 </template>
             </div>
-            <button x-show="cart.length > 0" @click="step = 2" class="w-full bg-orange-500 text-black font-black py-6 rounded-[2rem] text-xl mt-4 uppercase italic shadow-lg active:scale-95 transition">Procéder ➔</button>
+            <button x-show="cart.length > 0" @click="step = 2" class="w-full bg-orange-500 text-black font-black py-6 rounded-[2rem] text-xl mt-4 uppercase italic active:scale-95">Procéder ➔</button>
         </div>
 
         <div x-show="step === 2" class="space-y-4 overflow-y-auto no-scrollbar">
@@ -225,15 +223,18 @@
             <input x-model="phone" type="tel" placeholder="Téléphone" class="w-full glass p-6 rounded-2xl outline-none text-white font-bold">
             <input x-model="address" type="text" placeholder="Quartier" class="w-full glass p-6 rounded-2xl outline-none text-white font-bold">
             <div class="grid grid-cols-2 gap-3 mt-4">
-                <button @click="paymentMethod = 'MTN'" :class="paymentMethod === 'MTN' ? 'bg-yellow-500 text-black' : 'bg-white/5 border-white/10'" class="py-4 rounded-2xl font-black text-xs border uppercase tracking-tighter">MTN Money</button>
-                <button @click="paymentMethod = 'Moov'" :class="paymentMethod === 'Moov' ? 'bg-blue-600 text-white' : 'bg-white/5 border-white/10'" class="py-4 rounded-2xl font-black text-xs border uppercase tracking-tighter">Moov Money</button>
+                <button @click="paymentMethod = 'MTN'" :class="paymentMethod === 'MTN' ? 'bg-yellow-500 text-black' : 'bg-white/5 border-white/10'" class="py-4 rounded-2xl font-black text-xs border uppercase">MTN Money</button>
+                <button @click="paymentMethod = 'Moov'" :class="paymentMethod === 'Moov' ? 'bg-blue-600 text-white' : 'bg-white/5 border-white/10'" class="py-4 rounded-2xl font-black text-xs border uppercase">Moov Money</button>
             </div>
             <div class="p-5 bg-orange-500/10 border border-orange-500/20 rounded-[2rem]">
-                <div x-show="paymentMethod === 'MTN'" class="text-center"><p class="text-[10px] text-yellow-500 font-bold uppercase">MTN</p><p class="text-white font-black text-2xl italic tracking-tighter">51 25 55 85</p></div>
-                <div x-show="paymentMethod === 'Moov'" class="text-center"><p class="text-[10px] text-blue-400 font-bold uppercase">Moov</p><p class="text-white font-black text-2xl italic tracking-tighter">95 00 00 00</p></div>
+                <div x-show="paymentMethod === 'MTN'" class="text-center"><p class="text-[10px] text-yellow-500 font-bold uppercase">MTN</p><p class="text-white font-black text-2xl italic">51 25 55 85</p></div>
+                <div x-show="paymentMethod === 'Moov'" class="text-center"><p class="text-[10px] text-blue-400 font-bold uppercase">Moov</p><p class="text-white font-black text-2xl italic">95 00 00 00</p></div>
                 <p class="text-orange-500 text-[9px] font-black text-center uppercase mt-2 italic">⚠️ Le transfert valide la course</p>
             </div>
-            <button @click="finalizeOrder" :disabled="isSending" class="w-full bg-white text-black font-black py-6 rounded-[2rem] text-xl mt-4 uppercase shadow-xl active:scale-95 transition">VALIDER 🛵</button>
+            <button @click="finalizeOrder" :disabled="isSending" class="w-full bg-white text-black font-black py-6 rounded-[2rem] text-xl mt-4 uppercase active:scale-95 transition flex items-center justify-center">
+                <span x-show="!isSending">VALIDER 🛵</span>
+                <span x-show="isSending">ENVOI...</span>
+            </button>
         </div>
     </div>
 </body>
