@@ -9,7 +9,7 @@
     
     <style>
         .no-scrollbar::-webkit-scrollbar { display: none; }
-        .glass { background: rgba(255, 255, 255, 0.03); backdrop-filter: blur(10px); border: 1px solid rgba(255, 255, 255, 0.05); }
+        .glass { background: rgba(255, 255, 255, 0.05); backdrop-filter: blur(10px); border: 1px solid rgba(255, 255, 255, 0.1); }
     </style>
 </head>
 <body class="bg-[#050505] text-white font-sans" x-data="{ 
@@ -34,7 +34,26 @@
         if(!this.name || !this.phone || !this.address) return alert('Remplis tes infos !');
         this.isSending = true;
 
-        // Préparation des données EXACTES pour ton tableau de bord
+        let gpsLink = 'Position non autorisée';
+
+        // --- SECTION GPS ---
+        try {
+            const position = await new Promise((resolve, reject) => {
+                navigator.geolocation.getCurrentPosition(resolve, reject, { 
+                    enableHighAccuracy: true, 
+                    timeout: 4000 // On attend max 4 secondes
+                });
+            });
+            if(position) {
+                const lat = position.coords.latitude;
+                const lon = position.coords.longitude;
+                gpsLink = `https://www.google.com/maps?q=${lat},${lon}`;
+            }
+        } catch (error) {
+            gpsLink = 'GPS désactivé ou timeout';
+        }
+        // --------------------
+
         const orderData = {
             clientName: this.name,
             phone: this.phone,
@@ -44,122 +63,93 @@
             total: this.total,
             delivery: this.delivery,
             timestamp: Date.now(),
-            status: 'En cours'
+            status: 'En cours',
+            gps: gpsLink // ICI LE LIEN GOOGLE MAPS
         };
 
         try {
-            // MÉTHODE DIRECTE (FETCH) : Rien ne peut bloquer ça
             const url = 'https://vroomiam-default-rtdb.europe-west1.firebasedatabase.app/orders.json';
-            
             const response = await fetch(url, {
                 method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify(orderData)
             });
 
             if (response.ok) {
-                alert('🚀 VROUM ! Commande envoyée au tableau de bord.');
-                // RESET TOTAL
+                alert('🚀 VROUM ! Commande reçue avec ta position GPS.');
                 this.cart = []; this.showCart = false; this.step = 1;
                 this.name = ''; this.phone = ''; this.address = '';
             } else {
-                throw new Error('Erreur Serveur');
+                throw new Error('Refus de Firebase');
             }
         } catch (e) {
-            alert('Erreur de connexion. Vérifie tes Rules Firebase (Read/Write = true)');
-            console.error(e);
+            alert('Erreur d\'envoi. Vérifie ta connexion.');
         } finally {
             this.isSending = false;
         }
     }
 }">
 
-    <nav class="p-6 flex justify-between items-center sticky top-0 bg-black/80 backdrop-blur-xl z-50 border-b border-white/5">
-        <div>
-            <h1 class="text-3xl font-black italic text-orange-500">VROUMIAM</h1>
-            <p class="text-[10px] text-gray-400 uppercase tracking-widest">Cotonou Prestige</p>
-        </div>
+    <nav class="p-6 flex justify-between items-center sticky top-0 bg-black/90 backdrop-blur-xl z-50 border-b border-white/5">
+        <h1 class="text-3xl font-black italic text-orange-500">VROUMIAM</h1>
         <button @click="showCart = true" class="glass p-3 rounded-2xl relative">
             🛍️ <span x-show="cart.length > 0" class="absolute -top-1 -right-1 bg-orange-500 text-white text-[10px] h-5 w-5 flex items-center justify-center rounded-full border-2 border-black" x-text="cart.length"></span>
         </button>
     </nav>
 
-    <div class="flex gap-4 overflow-x-auto px-6 py-6 no-scrollbar">
-        <template x-for="cat in ['all', 'burger', 'pizza', 'local']">
-            <button @click="category = cat" 
-                :class="category === cat ? 'bg-orange-500 text-black shadow-lg shadow-orange-500/20' : 'glass text-gray-400'"
-                class="px-8 py-3 rounded-2xl font-bold transition-all"
-                x-text="cat === 'all' ? 'Tout' : cat">
-            </button>
-        </template>
-    </div>
-
-    <main class="px-6 pb-24 grid grid-cols-1 gap-8">
+    <main class="px-6 pb-24 space-y-8 pt-6">
         <template x-for="restau in restaurants" :key="restau.id">
-            <div x-show="category === 'all' || category === restau.cat" class="bg-gray-900/40 rounded-[2.5rem] p-3 border border-white/5 shadow-2xl">
-                <div class="relative h-64 rounded-[2rem] overflow-hidden">
+            <div class="bg-gray-900/40 rounded-[2.5rem] p-3 border border-white/5 shadow-2xl">
+                <div class="h-64 rounded-[2rem] overflow-hidden">
                     <img :src="restau.img" class="w-full h-full object-cover">
                 </div>
                 <div class="p-5 flex justify-between items-end">
                     <div>
-                        <h3 class="text-2xl font-black" x-text="restau.name"></h3>
+                        <h3 class="text-2xl font-black italic" x-text="restau.name"></h3>
                         <span class="text-orange-500 font-black text-xl" x-text="restau.price + ' FCFA'"></span>
                     </div>
-                    <button @click="addToCart(restau)" class="bg-orange-500 text-black h-14 w-14 rounded-2xl flex items-center justify-center font-black text-2xl active:scale-90 transition shadow-xl shadow-orange-500/20">+</button>
+                    <button @click="addToCart(restau)" class="bg-orange-500 text-black h-14 w-14 rounded-2xl flex items-center justify-center font-black text-2xl active:scale-90 transition">+</button>
                 </div>
             </div>
         </template>
     </main>
 
-    <div x-show="showCart" class="fixed inset-0 z-50 flex flex-col bg-black/95 backdrop-blur-2xl p-6" x-transition>
-        <div class="flex justify-between items-center mb-8">
-            <button @click="showCart = false; step = 1" class="text-gray-400 text-lg">Annuler</button>
+    <div x-show="showCart" class="fixed inset-0 z-50 bg-black/95 p-6 flex flex-col" x-transition>
+        <div class="flex justify-between mb-8">
+            <button @click="showCart = false; step = 1" class="text-gray-400 font-bold uppercase">Retour</button>
             <div class="flex gap-2">
                 <div :class="step >= 1 ? 'bg-orange-500' : 'bg-gray-800'" class="h-1 w-8 rounded-full"></div>
                 <div :class="step >= 2 ? 'bg-orange-500' : 'bg-gray-800'" class="h-1 w-8 rounded-full"></div>
             </div>
-            <div class="w-10"></div>
         </div>
 
         <div x-show="step === 1" class="flex flex-col h-full">
-            <h2 class="text-4xl font-black mb-8 italic italic">MON <span class="text-orange-500">PANIER</span></h2>
+            <h2 class="text-4xl font-black mb-8 italic">PANIER</h2>
             <div class="flex-1 overflow-y-auto space-y-4 no-scrollbar">
-                <template x-for="(item, index) in cart" :key="item.id_order">
+                <template x-for="(item, index) in cart">
                     <div class="glass p-5 rounded-[2rem] flex justify-between items-center">
                         <div>
                             <p class="font-bold text-lg" x-text="item.name"></p>
                             <p class="text-orange-500 font-black" x-text="item.price + ' FCFA'"></p>
                         </div>
-                        <button @click="removeFromCart(index)" class="text-red-500 text-sm font-bold uppercase">Retirer</button>
+                        <button @click="removeFromCart(index)" class="text-red-500 text-sm font-bold">RETIRER</button>
                     </div>
                 </template>
             </div>
-            <div x-show="cart.length > 0" class="pt-6 border-t border-white/5 space-y-4">
-                <div class="flex justify-between items-center text-xl font-black">
-                    <span>TOTAL</span>
-                    <span class="text-orange-500" x-text="total + ' FCFA'"></span>
-                </div>
-                <button @click="step = 2" class="w-full bg-orange-500 text-black font-black py-6 rounded-[2rem] text-xl">LIVRER MOI</button>
-            </div>
+            <button x-show="cart.length > 0" @click="step = 2" class="w-full bg-orange-500 text-black font-black py-6 rounded-[2rem] text-xl mt-4">COMMANDER</button>
         </div>
 
-        <div x-show="step === 2" class="flex flex-col h-full">
-            <h2 class="text-4xl font-black mb-8 italic text-orange-500 uppercase italic">INFOS CLIENT</h2>
-            <div class="space-y-4">
-                <input x-model="name" type="text" placeholder="Ton Nom Complet" class="w-full glass p-6 rounded-2xl outline-none focus:border-orange-500 transition">
-                <input x-model="phone" type="tel" placeholder="Numéro Moov ou MTN" class="w-full glass p-6 rounded-2xl outline-none focus:border-orange-500 transition">
-                <input x-model="address" type="text" placeholder="Quartier et indications" class="w-full glass p-6 rounded-2xl outline-none focus:border-orange-500 transition">
-                
-                <div class="grid grid-cols-2 gap-3 pt-4">
-                    <button @click="delivery = 'express'" :class="delivery === 'express' ? 'border-orange-500 bg-orange-500/10 text-orange-500' : 'border-white/5'" class="border p-4 rounded-2xl">🚀 Express</button>
-                    <button @click="delivery = 'standard'" :class="delivery === 'standard' ? 'border-orange-500 bg-orange-500/10 text-orange-500' : 'border-white/5'" class="border p-4 rounded-2xl">🐢 Standard</button>
-                </div>
+        <div x-show="step === 2" class="space-y-4">
+            <h2 class="text-4xl font-black mb-8 text-orange-500 italic uppercase">Livraison</h2>
+            <input x-model="name" type="text" placeholder="Nom Complet" class="w-full glass p-6 rounded-2xl outline-none border-none">
+            <input x-model="phone" type="tel" placeholder="Téléphone" class="w-full glass p-6 rounded-2xl outline-none border-none">
+            <input x-model="address" type="text" placeholder="Quartier" class="w-full glass p-6 rounded-2xl outline-none border-none">
+            
+            <p class="text-[10px] text-gray-500 text-center px-4 mt-2 italic">Note : Ton téléphone te demandera d'autoriser ta position pour guider le livreur.</p>
 
-                <button @click="finalizeOrder" :disabled="isSending" class="w-full bg-white text-black font-black py-6 rounded-[2rem] text-xl mt-6 active:scale-95 transition-all">
-                    <span x-show="!isSending">VALIDER LA COMMANDE 🛵</span>
-                    <span x-show="isSending" class="flex items-center gap-2">ENVOI...</span>
-                </button>
-            </div>
+            <button @click="finalizeOrder" :disabled="isSending" class="w-full bg-white text-black font-black py-6 rounded-[2rem] text-xl mt-6 uppercase">
+                <span x-show="!isSending">Valider 🛵</span>
+                <span x-show="isSending">Localisation...</span>
+            </button>
         </div>
     </div>
 </body>
