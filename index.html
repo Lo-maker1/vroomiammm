@@ -21,6 +21,14 @@
             messagingSenderId: "13433812189",
             appId: "1:13433812189:web:40b8ba4b14cb0a4deb9734"
         };
+        // Initialisation Firebase
+let app;
+try {
+    app = firebase.initializeApp(firebaseConfig);
+    console.log(« ✅ Firebase initialisé avec succès »);
+} catch (error) {
+    console.error(« ❌ Erreur d’initialisation Firebase : », error);
+}
         
         // Initialisation de la base de données
         firebase.initializeApp(firebaseConfig);
