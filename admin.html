@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>VROUMIAM - Administration</title>
+    <title>VROUMIAM - Business Stats</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
@@ -22,37 +22,28 @@
         const app = initializeApp(firebaseConfig);
         const db = getDatabase(app);
 
-        // --- CONFIGURATION DES LIVREURS ---
         const driverNumbers = {
             'Marc': '22990000000', 
             'Boris': '2290195480000',
             'Yasmine': '22992000000'
         };
 
-        // Fonction mise à jour avec le VRAI GPS
         window.sendToDriver = (id, name, phone, address, items, total, gps) => {
             const selectEl = document.getElementById(`select-${id}`);
             const driverName = selectEl.value;
-            
-            if(!driverName) {
-                alert("Choisis un livreur d'abord !");
-                return;
-            }
+            if(!driverName) return alert("Choisis un livreur !");
             
             const num = driverNumbers[driverName];
             const mapsLink = (gps && gps.includes('http')) ? gps : `https://www.google.com/maps/search/${encodeURIComponent(address)}`;
             
-            const msg = `🚀 *NOUVELLE COURSE VROUMIAM* 🛵\n` +
+            const msg = `🚀 *COURSE VROUMIAM* 🛵\n` +
                         `------------------------------\n` +
-                        `🍔 *COMMANDE :* ${items}\n` +
-                        `💰 *A ENCAISSER :* ${total} F\n\n` +
+                        `🍔 *MENU :* ${items}\n` +
+                        `💰 *CASH :* ${total} F\n\n` +
                         `👤 *CLIENT :* ${name}\n` +
-                        `📞 *TEL :* ${phone}\n` +
                         `📍 *QUARTIER :* ${address}\n\n` +
-                        `🗺️ *L'ITINÉRAIRE GPS :*\n${mapsLink}\n` +
-                        `------------------------------\n` +
-                        `⚡ *Vroum Vroum ! Bonne route !*`;
-            
+                        `🗺️ *GPS :*\n${mapsLink}\n` +
+                        `------------------------------`;
             window.open(`https://wa.me/${num}?text=${encodeURIComponent(msg)}`, '_blank');
         };
 
@@ -68,68 +59,74 @@
         onValue(ordersRef, (snapshot) => {
             const data = snapshot.val();
             const container = document.getElementById('orders-list');
+            
+            // ÉLÉMENTS DE STATISTIQUES
+            let totalCA = 0;
+            let activeOrders = 0;
+            let driverStats = { 'Marc': 0, 'Boris': 0, 'Yasmine': 0 };
+
             container.innerHTML = '';
 
             if (data) {
                 Object.keys(data).reverse().forEach(id => {
                     const order = data[id];
-                    // On vérifie si le GPS existe pour afficher le bouton
                     const hasGPS = order.gps && order.gps.includes('http');
                     
+                    // CALCUL DES STATS
+                    if (order.status === 'Livré') {
+                        totalCA += parseInt(order.total) || 0;
+                        if (order.driver) driverStats[order.driver]++;
+                    } else {
+                        activeOrders++;
+                    }
+
                     const card = `
                         <div class="bg-gray-900 p-6 rounded-[2rem] border border-white/5 mb-6 shadow-2xl">
                             <div class="flex justify-between items-start">
                                 <div>
-                                    <h3 class="text-orange-500 font-black text-xl italic uppercase tracking-tighter">Commande #${id.slice(-4)}</h3>
+                                    <h3 class="text-orange-500 font-black text-xl italic uppercase tracking-tighter">#${id.slice(-4)}</h3>
                                     <p class="text-white font-bold text-lg mt-1">${order.items}</p>
                                     <div class="mt-3 space-y-2 text-sm text-gray-400">
                                         <p>👤 <span class="text-white">${order.clientName}</span> (${order.phone})</p>
                                         <p>📍 ${order.address}</p>
-                                        
-                                        ${hasGPS ? `
-                                            <a href="${order.gps}" target="_blank" class="inline-flex items-center gap-2 bg-blue-600/20 text-blue-400 px-3 py-2 rounded-xl text-[10px] font-black uppercase border border-blue-600/30">
-                                                📍 Voir la position exacte
-                                            </a>
-                                        ` : '<p class="text-[10px] italic text-gray-600">GPS non activé par le client</p>'}
+                                        ${hasGPS ? `<a href="${order.gps}" target="_blank" class="inline-flex items-center gap-2 bg-blue-600/20 text-blue-400 px-3 py-2 rounded-xl text-[10px] font-black uppercase border border-blue-600/30">📍 Position exacte</a>` : ''}
                                     </div>
                                 </div>
                                 <div class="text-right">
-                                    <span class="bg-orange-500 text-black text-[10px] font-black px-3 py-1 rounded-full uppercase italic">${order.status || 'En cours'}</span>
+                                    <span class="${order.status === 'Livré' ? 'bg-green-500' : 'bg-orange-500'} text-black text-[10px] font-black px-3 py-1 rounded-full uppercase italic">${order.status || 'En cours'}</span>
                                     <p class="text-2xl font-black text-white mt-3">${order.total} F</p>
                                 </div>
                             </div>
 
                             <div class="mt-6 pt-6 border-t border-white/5">
-                                <p class="text-[10px] text-gray-500 uppercase font-black mb-3 tracking-[0.2em]">Affectation Livreur</p>
                                 <div class="flex gap-2">
                                     <select id="select-${id}" onchange="updateDriver('${id}', this.value)" 
                                         class="flex-1 bg-black border border-white/10 p-4 rounded-2xl text-sm font-bold text-orange-500 outline-none">
-                                        <option value="">-- Sélectionner --</option>
+                                        <option value="">-- Livreur --</option>
                                         <option value="Marc" ${order.driver === 'Marc' ? 'selected' : ''}>🛵 Marc</option>
                                         <option value="Boris" ${order.driver === 'Boris' ? 'selected' : ''}>🛵 Boris</option>
                                         <option value="Yasmine" ${order.driver === 'Yasmine' ? 'selected' : ''}>🛵 Yasmine</option>
                                     </select>
                                     <button onclick="sendToDriver('${id}', '${order.clientName}', '${order.phone}', '${order.address}', '${order.items}', '${order.total}', '${order.gps || ''}')" 
-                                        class="bg-orange-500 text-black px-6 rounded-2xl font-black text-xs active:scale-90 transition shadow-lg uppercase">
-                                        🚀 Go
-                                    </button>
+                                        class="bg-orange-500 text-black px-6 rounded-2xl font-black text-xs active:scale-90 transition uppercase">🚀 Go</button>
                                 </div>
                             </div>
 
                             <div class="mt-4 flex gap-3">
-                                <button onclick="updateStatus('${id}', 'Livré')" class="flex-1 bg-white/5 border border-white/10 text-green-500 font-bold py-4 rounded-2xl transition uppercase text-[10px]">
-                                    ✅ Marquer Livré
-                                </button>
-                                <a href="https://wa.me/${order.phone}" target="_blank" class="bg-[#25D366]/10 border border-[#25D366]/20 text-[#25D366] font-bold px-6 py-4 rounded-2xl">
-                                    💬 Client
-                                </a>
+                                <button onclick="updateStatus('${id}', 'Livré')" class="flex-1 bg-white/5 border border-white/10 text-green-500 font-bold py-4 rounded-2xl transition uppercase text-[10px]">✅ Livré</button>
+                                <a href="https://wa.me/${order.phone}" target="_blank" class="bg-[#25D366]/10 border border-[#25D366]/20 text-[#25D366] font-bold px-6 py-4 rounded-2xl italic text-[10px]">💬 Client</a>
                             </div>
                         </div>
                     `;
                     container.innerHTML += card;
                 });
-            } else {
-                container.innerHTML = '<p class="text-gray-500 text-center py-20 italic">En attente de commandes...</p>';
+
+                // MISE À JOUR DES COMPTEURS STATS
+                document.getElementById('stat-ca').innerText = totalCA.toLocaleString() + ' F';
+                document.getElementById('stat-active').innerText = activeOrders;
+                
+                let topDriver = Object.keys(driverStats).reduce((a, b) => driverStats[a] > driverStats[b] ? a : b);
+                document.getElementById('stat-top').innerText = driverStats[topDriver] > 0 ? topDriver : 'Aucun';
             }
         });
     </script>
@@ -138,18 +135,36 @@
 
     <nav class="bg-black/60 backdrop-blur-xl border-b border-white/5 p-6 sticky top-0 z-50">
         <div class="flex justify-between items-center max-w-4xl mx-auto">
-            <h1 class="text-3xl font-black text-orange-500 italic">VROUMIAM <span class="text-white text-[10px] font-light border border-white/20 px-2 py-0.5 ml-2 uppercase not-italic">Admin</span></h1>
+            <h1 class="text-3xl font-black text-orange-500 italic uppercase">VROUMIAM</h1>
             <div class="flex items-center gap-2 text-[10px] font-black uppercase text-green-500">
-                <div class="w-2 h-2 bg-green-500 rounded-full animate-ping"></div> Live
+                <div class="w-2 h-2 bg-green-500 rounded-full animate-ping"></div> LIVE ADMIN
             </div>
         </div>
     </nav>
 
     <main class="p-6 max-w-2xl mx-auto pb-20">
+        <div class="grid grid-cols-3 gap-3 mb-10">
+            <div class="bg-gray-900 border border-white/5 p-4 rounded-[1.5rem] text-center shadow-xl">
+                <p class="text-[8px] text-gray-500 font-black uppercase tracking-tighter mb-1 italic">Chiffre d'Affaires</p>
+                <p id="stat-ca" class="text-lg font-black text-orange-500 italic">0 F</p>
+            </div>
+            <div class="bg-gray-900 border border-white/5 p-4 rounded-[1.5rem] text-center shadow-xl">
+                <p class="text-[8px] text-gray-500 font-black uppercase tracking-tighter mb-1 italic">En cours</p>
+                <p id="stat-active" class="text-lg font-black text-white italic">0</p>
+            </div>
+            <div class="bg-gray-900 border border-white/5 p-4 rounded-[1.5rem] text-center shadow-xl">
+                <p class="text-[8px] text-gray-500 font-black uppercase tracking-tighter mb-1 italic">Top Livreur</p>
+                <p id="stat-top" class="text-sm font-black text-white uppercase italic truncate">---</p>
+            </div>
+        </div>
+
+        <h2 class="text-2xl font-black mb-8 italic flex items-center gap-3">
+            <span class="text-orange-500 underline decoration-2 underline-offset-8 uppercase">📦 COMMANDES</span>
+        </h2>
+
         <div id="orders-list">
             <div class="text-center py-20">
-                <div class="inline-block animate-spin rounded-full h-10 w-10 border-t-2 border-orange-500 mb-4"></div>
-                <p class="text-gray-500 text-sm font-bold uppercase">Synchronisation...</p>
+                <p class="text-gray-500 text-sm font-bold uppercase tracking-widest">Chargement...</p>
             </div>
         </div>
     </main>
