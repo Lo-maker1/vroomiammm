@@ -9,6 +9,9 @@
     <style>
         .no-scrollbar::-webkit-scrollbar { display: none; }
         .glass { background: rgba(255, 255, 255, 0.05); backdrop-filter: blur(10px); border: 1px solid rgba(255, 255, 255, 0.1); }
+        .progress-bar { transition: width 1s ease-in-out; }
+        @keyframes pulse-orange { 0% { box-shadow: 0 0 0 0 rgba(249, 115, 22, 0.4); } 70% { box-shadow: 0 0 0 20px rgba(249, 115, 22, 0); } 100% { box-shadow: 0 0 0 0 rgba(249, 115, 22, 0); } }
+        .pulse { animation: pulse-orange 2s infinite; }
     </style>
 </head>
 <body class="bg-[#050505] text-white font-sans" x-data="{ 
@@ -17,33 +20,43 @@
     view: 'restaurants',
     selectedRestau: null,
     step: 1,
-    name: '', phone: '', address: '', delivery: 'express', isSending: false,
+    // MÉMOIRE LOCALE : Récupération auto du nom, tel et quartier
+    name: localStorage.getItem('vroum_name') || '', 
+    phone: localStorage.getItem('vroum_phone') || '', 
+    address: localStorage.getItem('vroum_address') || '', 
+    delivery: 'express', isSending: false,
     paymentMethod: 'MTN',
+    orderStatus: 'Cuisine',
     
-    // ICI TU POURRAS MODIFIER LES LIENS GPS QUAND TU LES AURAS
     restaurants: [
         { 
             id: 1, name: 'Grill', 
             img: 'https://images.unsplash.com/photo-1571091718767-18b5b1457add?w=600',
-            gps: 'https://maps.app.goo.gl/fTCbPmB6dS8ica9k9?g_st=ii', // <--- À REMPLACER PLUS TARD
+            gps: 'https://maps.app.goo.gl/fTCbPmB6dS8ica9k9?g_st=ii', 
             menu: [ { name: 'Whopper Classic', price: 3500 }, { name: 'Double Cheese', price: 4500 } ]
         },
         { 
             id: 2, name: 'Pizza Relax', 
             img: 'https://images.unsplash.com/photo-1513104890138-7c749659a591?w=600',
-            gps: 'https://maps.google.com/?q=Pizza+Relax+Cotonou', // <--- À REMPLACER PLUS TARD
+            gps: 'https://maps.google.com/?q=Pizza+Relax+Cotonou', 
             menu: [ { name: 'Pizza Margherita', price: 5000 }, { name: 'Pizza Reine', price: 6500 } ]
         },
         { 
             id: 3, name: 'Maquis du Port', 
             img: 'https://images.unsplash.com/photo-1567620905732-2d1ec7bb7445?w=600',
-            gps: 'https://maps.google.com/?q=Maquis+du+Port+Cotonou', // <--- À REMPLACER PLUS TARD
+            gps: 'https://maps.google.com/?q=Maquis+du+Port+Cotonou', 
             menu: [ { name: 'Atassi Complet', price: 2500 }, { name: 'Igname Pilée', price: 3000 } ]
         }
     ],
 
     tempItem: null,
     options: { sauce: false, piment: false, boisson: false },
+
+    // FONCTION PARRAINAGE WHATSAPP
+    shareVroumiam() {
+        const text = `🔥 *VROUMIAM* : L'élite de la livraison à Cotonou ! \n\nCommande via ce lien et dis que tu viens de la part de *${this.name || 'un ami'}* pour avoir un bonus ! 🛵💨\n\n👉 https://vroomiam.web.app`;
+        window.open(`https://wa.me/?text=${encodeURIComponent(text)}`, '_blank');
+    },
 
     openMenu(restau) { this.selectedRestau = restau; this.view = 'menu'; window.scrollTo(0,0); },
     prepareAdd(item) { this.tempItem = item; this.options = { sauce: false, piment: false, boisson: false }; },
@@ -62,6 +75,12 @@
     async finalizeOrder() {
         if(!this.name || !this.phone || !this.address) return alert('Remplis tes infos !');
         this.isSending = true;
+
+        // SAUVEGARDE LOCALE DES INFOS
+        localStorage.setItem('vroum_name', this.name);
+        localStorage.setItem('vroum_phone', this.phone);
+        localStorage.setItem('vroum_address', this.address);
+
         let gpsClient = 'Position non autorisée';
         try {
             const position = await new Promise((resolve, reject) => {
@@ -74,9 +93,10 @@
             clientName: this.name, phone: this.phone, address: this.address,
             items: this.cart.map(p => p.name).join(', '),
             restaurant: this.selectedRestau.name,
-            restauGPS: this.selectedRestau.gps, // <--- ENVOI DU GPS RESTO À L'ADMIN
+            restauGPS: this.selectedRestau.gps,
             total: this.total, payment: this.paymentMethod,
-            timestamp: Date.now(), status: 'En cours', gps: gpsClient 
+            timestamp: Date.now(), status: 'En cours', gps: gpsClient,
+            referredBy: 'Client Direct' 
         };
 
         try {
@@ -84,14 +104,15 @@
                 method: 'POST', body: JSON.stringify(orderData)
             });
             if (response.ok) {
-                alert('🚀 VROUM ! Commande reçue.');
-                this.cart = []; this.showCart = false; this.view = 'restaurants'; this.step = 1;
+                this.view = 'tracking'; // Bascule sur la vue de suivi
+                this.showCart = false;
+                setTimeout(() => { this.orderStatus = 'Route'; }, 7000); // Simulation du trajet
             }
         } catch (e) { alert('Erreur connexion'); } finally { this.isSending = false; }
     }
 }">
 
-    <nav class="p-6 flex justify-between items-center sticky top-0 bg-black/90 backdrop-blur-xl z-40 border-b border-white/5">
+    <nav class="p-6 flex justify-between items-center sticky top-0 bg-black/90 backdrop-blur-xl z-40 border-b border-white/5" x-show="view !== 'tracking'">
         <h1 @click="view = 'restaurants'" class="text-3xl font-black italic text-orange-500 cursor-pointer uppercase">VROUMIAM</h1>
         <button @click="showCart = true" class="glass p-3 rounded-2xl relative">
             🛍️ <span x-show="cart.length > 0" class="absolute -top-1 -right-1 bg-orange-500 text-white text-[10px] h-5 w-5 flex items-center justify-center rounded-full border-2 border-black" x-text="cart.length"></span>
@@ -99,7 +120,10 @@
     </nav>
 
     <main x-show="view === 'restaurants'" class="px-6 pb-24 space-y-8 pt-6">
-        <h2 class="text-xl font-black italic uppercase text-gray-400">Restaurants</h2>
+        <div class="flex justify-between items-end">
+            <h2 class="text-xl font-black italic uppercase text-gray-400">Restaurants</h2>
+            <p class="text-[10px] text-orange-500 font-bold uppercase italic" x-show="name" x-text="'Content de vous revoir, ' + name"></p>
+        </div>
         <template x-for="restau in restaurants" :key="restau.id">
             <div @click="openMenu(restau)" class="bg-gray-900/40 rounded-[2.5rem] p-3 border border-white/5 shadow-2xl active:scale-95 transition cursor-pointer">
                 <div class="h-48 rounded-[2rem] overflow-hidden"><img :src="restau.img" class="w-full h-full object-cover"></div>
@@ -118,29 +142,58 @@
             <template x-for="item in selectedRestau?.menu">
                 <div class="glass p-6 rounded-[2rem] flex justify-between items-center">
                     <div><p class="font-black text-xl italic" x-text="item.name"></p><p class="text-orange-500 font-black" x-text="item.price + ' F'"></p></div>
-                    <button @click="prepareAdd(item)" class="bg-orange-500 text-black h-12 w-12 rounded-2xl flex items-center justify-center font-black text-2xl">+</button>
+                    <button @click="prepareAdd(item)" class="bg-orange-500 text-black h-12 w-12 rounded-2xl flex items-center justify-center font-black text-2xl active:scale-90">+</button>
                 </div>
             </template>
         </div>
     </main>
 
-    <div x-show="tempItem" class="fixed inset-0 z- bg-black/90 flex items-center justify-center p-6">
+    <main x-show="view === 'tracking'" class="fixed inset-0 bg-[#050505] z- flex flex-col items-center justify-start p-8 text-center overflow-y-auto no-scrollbar" x-transition>
+        <div class="w-20 h-20 bg-orange-500 rounded-full flex items-center justify-center mb-6 mt-10 pulse">
+            <span class="text-3xl">🛵</span>
+        </div>
+        <h2 class="text-3xl font-black italic uppercase mb-2">VROUM... Lancé !</h2>
+        
+        <div class="w-full max-w-xs bg-gray-900 h-2 rounded-full mb-4 overflow-hidden border border-white/5 mt-8">
+            <div class="bg-orange-500 h-full progress-bar" :style="orderStatus === 'Cuisine' ? 'width: 33%' : (orderStatus === 'Route' ? 'width: 66%' : 'width: 100%')"></div>
+        </div>
+        <div class="flex justify-between w-full max-w-xs text-[9px] font-black uppercase italic mb-10">
+            <span :class="orderStatus === 'Cuisine' ? 'text-orange-500' : 'text-gray-600'">Cuisine</span>
+            <span :class="orderStatus === 'Route' ? 'text-orange-500' : 'text-gray-600'">En route</span>
+            <span class="text-gray-600">Arrivé</span>
+        </div>
+
+        <div class="bg-orange-500 p-6 rounded-[2.5rem] w-full max-w-xs mb-8 shadow-2xl">
+            <p class="text-black font-black uppercase text-[11px] mb-1">🎁 Gagne 500 F !</p>
+            <p class="text-black/80 text-[10px] font-bold leading-tight mb-4 italic">Invite un ami sur VROUMIAM. S'il commande, on t'offre une réduction sur ta prochaine course !</p>
+            <button @click="shareVroumiam()" class="w-full bg-black text-white font-black py-4 rounded-2xl text-[11px] uppercase italic active:scale-95 transition shadow-lg">Partager sur WhatsApp ➔</button>
+        </div>
+
+        <div class="glass p-5 rounded-[2rem] w-full max-w-xs border-orange-500/10 mb-8 text-center">
+            <p class="text-gray-500 text-[9px] font-black uppercase mb-1">Résumé</p>
+            <p class="font-bold italic text-white text-sm uppercase" x-text="total + ' F — ' + selectedRestau?.name"></p>
+        </div>
+
+        <button @click="view = 'restaurants'; cart = [];" class="text-gray-600 font-black uppercase text-[10px] tracking-widest underline underline-offset-4">Retour au menu</button>
+    </main>
+
+    <div x-show="tempItem" class="fixed inset-0 z-50 bg-black/90 flex items-center justify-center p-6" x-transition>
         <div class="bg-gray-900 w-full max-w-sm rounded-[2.5rem] p-8 border border-white/10 shadow-2xl">
             <h3 class="text-2xl font-black italic text-center mb-6 uppercase text-orange-500" x-text="tempItem?.name"></h3>
             <div class="space-y-4 mb-8">
-                <label class="flex items-center justify-between p-4 glass rounded-2xl cursor-pointer font-bold italic"><span>Sauce Mayo/Ketch</span><input type="checkbox" x-model="options.sauce" class="w-6 h-6"></label>
-                <label class="flex items-center justify-between p-4 glass rounded-2xl cursor-pointer font-bold italic text-red-500"><span>Piment 🔥</span><input type="checkbox" x-model="options.piment" class="w-6 h-6"></label>
-                <label class="flex items-center justify-between p-4 glass rounded-2xl cursor-pointer font-bold italic"><span>Boisson (+500 F)</span><input type="checkbox" x-model="options.boisson" class="w-6 h-6"></label>
+                <label class="flex items-center justify-between p-4 glass rounded-2xl cursor-pointer font-bold italic"><span>Sauce Mayo/Ketch</span><input type="checkbox" x-model="options.sauce" class="w-6 h-6 accent-orange-500"></label>
+                <label class="flex items-center justify-between p-4 glass rounded-2xl cursor-pointer font-bold italic text-red-500"><span>Piment 🔥</span><input type="checkbox" x-model="options.piment" class="w-6 h-6 accent-orange-500"></label>
+                <label class="flex items-center justify-between p-4 glass rounded-2xl cursor-pointer font-bold italic"><span>Boisson (+500 F)</span><input type="checkbox" x-model="options.boisson" class="w-6 h-6 accent-orange-500"></label>
             </div>
             <div class="flex gap-3">
                 <button @click="tempItem = null" class="flex-1 py-4 text-gray-500 font-black uppercase text-xs">Annuler</button>
-                <button @click="confirmAdd()" class="flex-2 bg-orange-500 text-black px-8 py-4 rounded-2xl font-black uppercase italic">Ajouter</button>
+                <button @click="confirmAdd()" class="flex-2 bg-orange-500 text-black px-8 py-4 rounded-2xl font-black uppercase italic shadow-lg active:scale-95">Ajouter</button>
             </div>
         </div>
     </div>
 
-    <div x-show="showCart" class="fixed inset-0 z-50 bg-black/95 p-6 flex flex-col">
-        <div class="flex justify-between mb-8"><button @click="showCart = false; step = 1" class="text-gray-400 font-bold uppercase">Retour</button></div>
+    <div x-show="showCart" class="fixed inset-0 z-50 bg-black/95 p-6 flex flex-col" x-transition>
+        <div class="flex justify-between mb-8"><button @click="showCart = false; step = 1" class="text-gray-400 font-bold uppercase text-xs tracking-widest">Retour</button></div>
         <div x-show="step === 1" class="flex flex-col h-full">
             <h2 class="text-4xl font-black mb-8 italic uppercase text-white">Panier</h2>
             <div class="flex-1 overflow-y-auto space-y-4 no-scrollbar">
@@ -151,7 +204,7 @@
                     </div>
                 </template>
             </div>
-            <button x-show="cart.length > 0" @click="step = 2" class="w-full bg-orange-500 text-black font-black py-6 rounded-[2rem] text-xl mt-4 uppercase italic">Procéder ➔</button>
+            <button x-show="cart.length > 0" @click="step = 2" class="w-full bg-orange-500 text-black font-black py-6 rounded-[2rem] text-xl mt-4 uppercase italic shadow-lg active:scale-95 transition">Procéder ➔</button>
         </div>
 
         <div x-show="step === 2" class="space-y-4 overflow-y-auto no-scrollbar">
@@ -160,15 +213,15 @@
             <input x-model="phone" type="tel" placeholder="Téléphone" class="w-full glass p-6 rounded-2xl outline-none text-white font-bold">
             <input x-model="address" type="text" placeholder="Quartier" class="w-full glass p-6 rounded-2xl outline-none text-white font-bold">
             <div class="grid grid-cols-2 gap-3 mt-4">
-                <button @click="paymentMethod = 'MTN'" :class="paymentMethod === 'MTN' ? 'bg-yellow-500 text-black' : 'bg-white/5 border-white/10'" class="py-4 rounded-2xl font-black text-xs border uppercase">MTN Money</button>
-                <button @click="paymentMethod = 'Moov'" :class="paymentMethod === 'Moov' ? 'bg-blue-600 text-white' : 'bg-white/5 border-white/10'" class="py-4 rounded-2xl font-black text-xs border uppercase">Moov Money</button>
+                <button @click="paymentMethod = 'MTN'" :class="paymentMethod === 'MTN' ? 'bg-yellow-500 text-black' : 'bg-white/5 border-white/10'" class="py-4 rounded-2xl font-black text-xs border uppercase tracking-tighter">MTN Money</button>
+                <button @click="paymentMethod = 'Moov'" :class="paymentMethod === 'Moov' ? 'bg-blue-600 text-white' : 'bg-white/5 border-white/10'" class="py-4 rounded-2xl font-black text-xs border uppercase tracking-tighter">Moov Money</button>
             </div>
             <div class="p-5 bg-orange-500/10 border border-orange-500/20 rounded-[2rem]">
-                <div x-show="paymentMethod === 'MTN'" class="text-center"><p class="text-[10px] text-yellow-500 font-bold uppercase">MTN</p><p class="text-white font-black text-2xl italic">51 25 55 85</p></div>
-                <div x-show="paymentMethod === 'Moov'" class="text-center"><p class="text-[10px] text-blue-400 font-bold uppercase">Moov</p><p class="text-white font-black text-2xl italic">95 00 00 00</p></div>
-                <p class="text-orange-500 text-[10px] font-black text-center uppercase mt-2 italic">⚠️ Le transfert valide la course</p>
+                <div x-show="paymentMethod === 'MTN'" class="text-center"><p class="text-[10px] text-yellow-500 font-bold uppercase">MTN</p><p class="text-white font-black text-2xl italic tracking-tighter">51 25 55 85</p></div>
+                <div x-show="paymentMethod === 'Moov'" class="text-center"><p class="text-[10px] text-blue-400 font-bold uppercase">Moov</p><p class="text-white font-black text-2xl italic tracking-tighter">95 00 00 00</p></div>
+                <p class="text-orange-500 text-[9px] font-black text-center uppercase mt-2 italic">⚠️ Le transfert valide la course</p>
             </div>
-            <button @click="finalizeOrder" :disabled="isSending" class="w-full bg-white text-black font-black py-6 rounded-[2rem] text-xl mt-4 uppercase">VALIDER 🛵</button>
+            <button @click="finalizeOrder" :disabled="isSending" class="w-full bg-white text-black font-black py-6 rounded-[2rem] text-xl mt-4 uppercase shadow-xl active:scale-95 transition">VALIDER 🛵</button>
         </div>
     </div>
 </body>
