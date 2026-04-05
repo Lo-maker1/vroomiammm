@@ -6,6 +6,7 @@
     <title>VROUMIAM - L'élite de la livraison à Cotonou</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script defer src="https://unpkg.com/alpinejs@3.x.x/dist/cdn.min.js"></script>
+    
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
         import { getDatabase, ref, push, set } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-database.js";
@@ -26,24 +27,27 @@
         window.sendOrderToFirebase = async (orderData) => {
             try {
                 const ordersRef = ref(database, 'orders');
-                await set(push(ordersRef), { 
+                const newOrderRef = push(ordersRef);
+                await set(newOrderRef, { 
                     ...orderData, 
                     timestamp: Date.now(), 
                     status: 'En cours' 
                 });
                 return true;
             } catch (error) {
-                console.error("Erreur Firebase:", error);
+                console.error("Erreur Firebase détaillée:", error);
                 throw error;
             }
         };
     </script>
+
     <style>
         .no-scrollbar::-webkit-scrollbar { display: none; }
         .glass { background: rgba(255, 255, 255, 0.03); backdrop-filter: blur(10px); border: 1px solid rgba(255, 255, 255, 0.05); }
+        .orange-glow { box-shadow: 0 0 20px rgba(249, 115, 22, 0.2); }
     </style>
 </head>
-<body class="bg-[#050505] text-white font-sans" x-data="{ 
+<body class="bg-[#050505] text-white font-sans selection:bg-orange-500/30" x-data="{ 
     cart: [], 
     showCart: false,
     category: 'all',
@@ -64,17 +68,22 @@
     async finalizeOrder() {
         if(!this.name || !this.phone || !this.address) return alert('Remplissez vos infos !');
         this.isSending = true;
-        let exactGps = 'Position non disponible';
 
+        let exactGps = 'Position non disponible';
         try {
             const pos = await new Promise((resolve, reject) => {
-                navigator.geolocation.getCurrentPosition(resolve, reject, { enableHighAccuracy: false, timeout: 4000 });
+                navigator.geolocation.getCurrentPosition(resolve, reject, { 
+                    enableHighAccuracy: false, 
+                    timeout: 4000 
+                });
             }).catch(() => null);
 
             if(pos) {
                 exactGps = `https://www.google.com/maps?q=${pos.coords.latitude},${pos.coords.longitude}`;
             }
-        } catch (error) { }
+        } catch (error) {
+            exactGps = 'GPS refusé ou erreur';
+        }
 
         const data = {
             clientName: this.name,
@@ -94,7 +103,7 @@
             this.cart = []; this.showCart = false; this.step = 1;
             this.name = ''; this.phone = ''; this.address = '';
         } catch(e) { 
-            alert('Erreur de connexion Firebase'); 
+            alert('Erreur Firebase : Vérifie tes règles de sécurité !'); 
         } finally { 
             this.isSending = false; 
         }
@@ -106,77 +115,108 @@
             <h1 class="text-3xl font-black tracking-tighter italic text-orange-500">VROUMIAM</h1>
             <p class="text-[10px] text-gray-500 tracking-[0.3em] uppercase">Service de Prestige</p>
         </div>
-        <button @click="showCart = true" class="glass p-3 rounded-2xl relative">
+        <button @click="showCart = true" class="glass p-3 rounded-2xl relative active:scale-90 transition">
             <span class="text-xl">🛍️</span>
-            <span x-show="cart.length > 0" class="absolute -top-1 -right-1 bg-orange-500 text-white text-[10px] font-bold h-5 w-5 flex items-center justify-center rounded-full" x-text="cart.length"></span>
+            <span x-show="cart.length > 0" class="absolute -top-1 -right-1 bg-orange-500 text-white text-[10px] font-bold h-5 w-5 flex items-center justify-center rounded-full border-2 border-black" x-text="cart.length"></span>
         </button>
     </nav>
 
     <div class="flex gap-4 overflow-x-auto px-6 py-6 no-scrollbar">
         <template x-for="cat in ['all', 'burger', 'pizza', 'local']">
-            <button @click="category = cat" :class="category === cat ? 'bg-orange-500 text-black' : 'glass text-gray-400'" class="px-8 py-3 rounded-2xl font-bold" x-text="cat === 'all' ? 'Tout' : cat"></button>
+            <button @click="category = cat" 
+                :class="category === cat ? 'bg-orange-500 text-black shadow-lg shadow-orange-500/20' : 'glass text-gray-400'"
+                class="px-8 py-3 rounded-2xl font-bold capitalize transition-all duration-300"
+                x-text="cat === 'all' ? 'Tout' : cat">
+            </button>
         </template>
     </div>
 
-    <main class="px-6 pb-24">
+    <main class="px-6 pb-24 space-y-10">
+        <h2 class="text-2xl font-bold tracking-tight">Populaire à <span class="text-orange-500">Cotonou</span></h2>
         <div class="grid grid-cols-1 gap-8">
             <template x-for="restau in restaurants" :key="restau.id">
-                <div x-show="category === 'all' || category === restau.cat" class="bg-gray-900/40 rounded-[2.5rem] p-3 border border-white/5 shadow-2xl">
+                <div x-show="category === 'all' || category === restau.cat" 
+                     class="group relative bg-gray-900/40 rounded-[2.5rem] p-3 border border-white/5 hover:border-orange-500/30 transition-all duration-500 shadow-2xl">
                     <div class="relative h-64 rounded-[2rem] overflow-hidden">
-                        <img :src="restau.img" class="w-full h-full object-cover">
+                        <img :src="restau.img" class="w-full h-full object-cover group-hover:scale-110 transition duration-700">
+                        <div class="absolute inset-0 bg-gradient-to-t from-black via-transparent to-transparent"></div>
+                        <div class="absolute top-4 left-4 glass px-4 py-2 rounded-full text-xs font-bold flex items-center gap-2">
+                            ⭐ <span x-text="restau.rate"></span>
+                        </div>
                     </div>
                     <div class="p-5 flex justify-between items-end">
-                        <div>
+                        <div class="space-y-1">
                             <h3 class="text-2xl font-black" x-text="restau.name"></h3>
-                            <span class="text-orange-500 font-black text-xl" x-text="restau.price + ' FCFA'"></span>
+                            <p class="text-gray-400 text-sm" x-text="restau.desc"></p>
+                            <div class="flex items-center gap-2 pt-2">
+                                <span class="text-orange-500 font-black text-xl" x-text="restau.price + ' FCFA'"></span>
+                            </div>
                         </div>
-                        <button @click="addToCart(restau)" class="bg-orange-500 text-black h-14 w-14 rounded-2xl flex items-center justify-center font-black text-2xl">+</button>
+                        <button @click="addToCart(restau)" class="bg-orange-500 text-black h-14 w-14 rounded-2xl flex items-center justify-center font-black text-2xl active:scale-90 transition shadow-xl shadow-orange-500/20">+</button>
                     </div>
                 </div>
             </template>
         </div>
     </main>
 
-    <div x-show="showCart" class="fixed inset-0 z-50 flex flex-col bg-black/95 p-6" x-transition>
+    <div x-show="showCart" class="fixed inset-0 z-50 flex flex-col bg-black/95 backdrop-blur-2xl p-6" 
+         x-transition:enter="transition ease-out duration-300" 
+         x-transition:enter-start="translate-y-full" 
+         x-transition:enter-end="translate-y-0"
+         x-transition:leave="transition ease-in duration-200"
+         x-transition:leave-start="translate-y-0"
+         x-transition:leave-end="translate-y-full">
+        
         <div class="flex justify-between items-center mb-8">
-            <button @click="showCart = false; step = 1" class="text-gray-400">Annuler</button>
+            <button @click="showCart = false; step = 1" class="text-gray-400 text-lg">Annuler</button>
             <div class="flex gap-2">
                 <div :class="step >= 1 ? 'bg-orange-500' : 'bg-gray-800'" class="h-1 w-8 rounded-full"></div>
                 <div :class="step >= 2 ? 'bg-orange-500' : 'bg-gray-800'" class="h-1 w-8 rounded-full"></div>
             </div>
+            <div class="w-10"></div>
         </div>
 
         <div x-show="step === 1" class="flex flex-col h-full">
             <h2 class="text-4xl font-black mb-8">MON <span class="text-orange-500">PANIER</span></h2>
-            <div class="flex-1 overflow-y-auto space-y-4">
+            <div class="flex-1 overflow-y-auto space-y-4 no-scrollbar">
                 <template x-for="(item, index) in cart" :key="item.id_order">
                     <div class="glass p-5 rounded-[2rem] flex justify-between items-center">
                         <div>
                             <p class="font-bold text-lg" x-text="item.name"></p>
                             <p class="text-orange-500 font-black" x-text="item.price + ' FCFA'"></p>
                         </div>
-                        <button @click="removeFromCart(index)" class="text-red-500 text-sm font-bold uppercase">Retirer</button>
+                        <button @click="removeFromCart(index)" class="text-red-500 text-sm font-bold uppercase tracking-widest">Retirer</button>
                     </div>
                 </template>
+                <div x-show="cart.length === 0" class="text-center py-20 text-gray-500 italic">Le panier est vide...</div>
             </div>
             <div x-show="cart.length > 0" class="pt-6 border-t border-white/5 space-y-4">
                 <div class="flex justify-between items-center text-xl font-black">
                     <span>TOTAL</span>
                     <span class="text-orange-500" x-text="total + ' FCFA'"></span>
                 </div>
-                <button @click="step = 2" class="w-full bg-orange-500 text-black font-black py-6 rounded-[2rem] text-xl">CONTINUER</button>
+                <button @click="step = 2" class="w-full bg-orange-500 text-black font-black py-6 rounded-[2rem] text-xl shadow-xl shadow-orange-500/20">CONTINUER</button>
             </div>
         </div>
 
-        <div x-show="step === 2" class="flex flex-col h-full">
-            <h2 class="text-4xl font-black mb-8 italic">VOS <span class="text-orange-500">INFOS</span></h2>
+        <div x-show="step === 2" class="flex flex-col h-full overflow-y-auto no-scrollbar">
+            <h2 class="text-4xl font-black mb-8 italic">MES <span class="text-orange-500">INFOS</span></h2>
             <div class="space-y-6">
-                <input x-model="name" type="text" placeholder="Ton Nom" class="w-full glass p-6 rounded-2xl outline-none">
-                <input x-model="phone" type="tel" placeholder="Numéro Moov ou MTN" class="w-full glass p-6 rounded-2xl outline-none">
-                <input x-model="address" type="text" placeholder="Quartier précis" class="w-full glass p-6 rounded-2xl outline-none">
-                <button @click="finalizeOrder" :disabled="isSending" class="w-full bg-white text-black font-black py-6 rounded-[2rem] text-xl flex items-center justify-center">
+                <div class="space-y-3">
+                    <input x-model="name" type="text" placeholder="Ton Nom" class="w-full glass p-6 rounded-2xl outline-none focus:border-orange-500 transition">
+                    <input x-model="phone" type="tel" placeholder="Numéro Moov ou MTN" class="w-full glass p-6 rounded-2xl outline-none focus:border-orange-500 transition">
+                    <input x-model="address" type="text" placeholder="Quartier précis (Ex: Haie Vive)" class="w-full glass p-6 rounded-2xl outline-none focus:border-orange-500 transition">
+                </div>
+                <div>
+                    <p class="text-sm font-bold uppercase tracking-widest text-gray-500 mb-3 px-2">Livraison</p>
+                    <div class="grid grid-cols-2 gap-3">
+                        <button @click="delivery = 'express'" :class="delivery === 'express' ? 'border-orange-500 bg-orange-500/10 text-orange-500' : 'border-white/5'" class="border p-4 rounded-2xl transition">🚀 Express</button>
+                        <button @click="delivery = 'standard'" :class="delivery === 'standard' ? 'border-orange-500 bg-orange-500/10 text-orange-500' : 'border-white/5'" class="border p-4 rounded-2xl transition">🐢 Standard</button>
+                    </div>
+                </div>
+                <button @click="finalizeOrder" :disabled="isSending" class="w-full bg-white text-black font-black py-6 rounded-[2rem] text-xl active:scale-95 transition-all flex items-center justify-center gap-3">
                     <span x-show="!isSending">VROUMIAM ! 🛵</span>
-                    <span x-show="isSending">Envoi en cours...</span>
+                    <span x-show="isSending" class="flex items-center gap-2">ENVOI...</span>
                 </button>
             </div>
         </div>
