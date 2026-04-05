@@ -32,19 +32,19 @@
         { 
             id: 1, name: 'Grill', 
             img: 'https://images.unsplash.com/photo-1571091718767-18b5b1457add?w=600',
-            gps: 'https://maps.app.goo.gl/fTCbPmB6dS8ica9k9?g_st=ii', 
+            gps: 'https://maps.app.goo.gl/fTCbPmB6dS8ica9k9?g_st=ii', ',
             menu: [ { name: 'Whopper Classic', price: 3500 }, { name: 'Double Cheese', price: 4500 } ]
         },
         { 
             id: 2, name: 'Pizza Relax', 
             img: 'https://images.unsplash.com/photo-1513104890138-7c749659a591?w=600',
-            gps: 'https://maps.google.com/?q=Pizza+Relax+Cotonou', 
+            gps: 'https://maps.google.com/?q=Pizza+Relax+Cotonou', ',
             menu: [ { name: 'Pizza Margherita', price: 5000 }, { name: 'Pizza Reine', price: 6500 } ]
         },
         { 
             id: 3, name: 'Maquis du Port', 
             img: 'https://images.unsplash.com/photo-1567620905732-2d1ec7bb7445?w=600',
-            gps: 'https://maps.google.com/?q=Maquis+du+Port+Cotonou', 
+            gps: 'https://maps.google.com/?q=Maquis+du+Port+Cotonou', ',
             menu: [ { name: 'Atassi Complet', price: 2500 }, { name: 'Igname Pilée', price: 3000 } ]
         }
     ],
@@ -124,6 +124,18 @@
             <h2 class="text-xl font-black italic uppercase text-gray-400">Restaurants</h2>
             <p class="text-[10px] text-orange-500 font-bold uppercase italic" x-show="name" x-text="'Content de vous revoir, ' + name"></p>
         </div>
+
+        <div @click="shareVroumiam()" class="p-6 bg-orange-500 rounded-[2.5rem] flex items-center justify-between cursor-pointer active:scale-95 transition shadow-xl border border-white/10">
+            <div class="flex items-center gap-4">
+                <span class="text-2xl">🎁</span>
+                <div>
+                    <p class="text-black font-black uppercase text-[11px] leading-none mb-1">Gagne 500 F de réduction</p>
+                    <p class="text-black/70 text-[9px] font-bold italic uppercase">Invite tes potes sur WhatsApp !</p>
+                </div>
+            </div>
+            <span class="text-black font-black">➔</span>
+        </div>
+
         <template x-for="restau in restaurants" :key="restau.id">
             <div @click="openMenu(restau)" class="bg-gray-900/40 rounded-[2.5rem] p-3 border border-white/5 shadow-2xl active:scale-95 transition cursor-pointer">
                 <div class="h-48 rounded-[2rem] overflow-hidden"><img :src="restau.img" class="w-full h-full object-cover"></div>
