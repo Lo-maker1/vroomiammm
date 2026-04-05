@@ -28,22 +28,31 @@
             'Yasmine': '22992000000'
         };
 
+        window.closeDay = () => {
+            const currentCA = document.getElementById('stat-ca').innerText;
+            if(confirm(`Voulez-vous clôturer la journée ? \nTotal encaissé : ${currentCA}`)) {
+                const ordersRef = ref(db, 'orders');
+                onValue(ordersRef, (snapshot) => {
+                    const data = snapshot.val();
+                    if(data) {
+                        Object.keys(data).forEach(id => {
+                            if(data[id].status === 'Livré') {
+                                update(ref(db, 'orders/' + id), { archived: true });
+                            }
+                        });
+                    }
+                }, { onlyOnce: true });
+                alert("Journée clôturée ! 🛵💨");
+            }
+        };
+
         window.sendToDriver = (id, name, phone, address, items, total, gps) => {
             const selectEl = document.getElementById(`select-${id}`);
             const driverName = selectEl.value;
             if(!driverName) return alert("Choisis un livreur !");
-            
             const num = driverNumbers[driverName];
             const mapsLink = (gps && gps.includes('http')) ? gps : `https://www.google.com/maps/search/${encodeURIComponent(address)}`;
-            
-            const msg = `🚀 *COURSE VROUMIAM* 🛵\n` +
-                        `------------------------------\n` +
-                        `🍔 *MENU :* ${items}\n` +
-                        `💰 *CASH :* ${total} F\n\n` +
-                        `👤 *CLIENT :* ${name}\n` +
-                        `📍 *QUARTIER :* ${address}\n\n` +
-                        `🗺️ *GPS :*\n${mapsLink}\n` +
-                        `------------------------------`;
+            const msg = `🚀 *COURSE VROUMIAM* 🛵\n------------------------------\n🍔 *MENU :* ${items}\n💰 *CASH :* ${total} F\n\n👤 *CLIENT :* ${name}\n📍 *QUARTIER :* ${address}\n\n🗺️ *GPS :*\n${mapsLink}\n------------------------------`;
             window.open(`https://wa.me/${num}?text=${encodeURIComponent(msg)}`, '_blank');
         };
 
@@ -60,7 +69,6 @@
             const data = snapshot.val();
             const container = document.getElementById('orders-list');
             
-            // ÉLÉMENTS DE STATISTIQUES
             let totalCA = 0;
             let activeOrders = 0;
             let driverStats = { 'Marc': 0, 'Boris': 0, 'Yasmine': 0 };
@@ -70,12 +78,12 @@
             if (data) {
                 Object.keys(data).reverse().forEach(id => {
                     const order = data[id];
+                    if (order.archived === true) return;
+
                     const hasGPS = order.gps && order.gps.includes('http');
-                    
-                    // CALCUL DES STATS
                     if (order.status === 'Livré') {
                         totalCA += parseInt(order.total) || 0;
-                        if (order.driver) driverStats[order.driver]++;
+                        if (order.driver && driverStats[order.driver] !== undefined) driverStats[order.driver]++;
                     } else {
                         activeOrders++;
                     }
@@ -97,75 +105,83 @@
                                     <p class="text-2xl font-black text-white mt-3">${order.total} F</p>
                                 </div>
                             </div>
-
                             <div class="mt-6 pt-6 border-t border-white/5">
                                 <div class="flex gap-2">
-                                    <select id="select-${id}" onchange="updateDriver('${id}', this.value)" 
-                                        class="flex-1 bg-black border border-white/10 p-4 rounded-2xl text-sm font-bold text-orange-500 outline-none">
+                                    <select id="select-${id}" onchange="updateDriver('${id}', this.value)" class="flex-1 bg-black border border-white/10 p-4 rounded-2xl text-sm font-bold text-orange-500 outline-none">
                                         <option value="">-- Livreur --</option>
                                         <option value="Marc" ${order.driver === 'Marc' ? 'selected' : ''}>🛵 Marc</option>
                                         <option value="Boris" ${order.driver === 'Boris' ? 'selected' : ''}>🛵 Boris</option>
                                         <option value="Yasmine" ${order.driver === 'Yasmine' ? 'selected' : ''}>🛵 Yasmine</option>
                                     </select>
-                                    <button onclick="sendToDriver('${id}', '${order.clientName}', '${order.phone}', '${order.address}', '${order.items}', '${order.total}', '${order.gps || ''}')" 
-                                        class="bg-orange-500 text-black px-6 rounded-2xl font-black text-xs active:scale-90 transition uppercase">🚀 Go</button>
+                                    <button onclick="sendToDriver('${id}', '${order.clientName}', '${order.phone}', '${order.address}', '${order.items}', '${order.total}', '${order.gps || ''}')" class="bg-orange-500 text-black px-6 rounded-2xl font-black text-xs active:scale-90 transition uppercase shadow-lg">🚀 Go</button>
                                 </div>
                             </div>
-
                             <div class="mt-4 flex gap-3">
                                 <button onclick="updateStatus('${id}', 'Livré')" class="flex-1 bg-white/5 border border-white/10 text-green-500 font-bold py-4 rounded-2xl transition uppercase text-[10px]">✅ Livré</button>
-                                <a href="https://wa.me/${order.phone}" target="_blank" class="bg-[#25D366]/10 border border-[#25D366]/20 text-[#25D366] font-bold px-6 py-4 rounded-2xl italic text-[10px]">💬 Client</a>
+                                <a href="https://wa.me/${order.phone}" target="_blank" class="bg-[#25D366]/10 border border-[#25D366]/20 text-[#25D366] font-bold px-6 py-4 rounded-2xl italic text-[10px] flex items-center justify-center">💬 Client</a>
                             </div>
                         </div>
                     `;
                     container.innerHTML += card;
                 });
 
-                // MISE À JOUR DES COMPTEURS STATS
+                // MISE À JOUR DES COMPTEURS
                 document.getElementById('stat-ca').innerText = totalCA.toLocaleString() + ' F';
                 document.getElementById('stat-active').innerText = activeOrders;
                 
-                let topDriver = Object.keys(driverStats).reduce((a, b) => driverStats[a] > driverStats[b] ? a : b);
-                document.getElementById('stat-top').innerText = driverStats[topDriver] > 0 ? topDriver : 'Aucun';
+                // MISE À JOUR DU SCOREBOARD DES LIVREURS
+                document.getElementById('score-marc').innerText = driverStats['Marc'];
+                document.getElementById('score-boris').innerText = driverStats['Boris'];
+                document.getElementById('score-yasmine').innerText = driverStats['Yasmine'];
             }
         });
     </script>
 </head>
 <body class="bg-[#050505] text-white min-h-screen font-sans">
 
-    <nav class="bg-black/60 backdrop-blur-xl border-b border-white/5 p-6 sticky top-0 z-50">
-        <div class="flex justify-between items-center max-w-4xl mx-auto">
-            <h1 class="text-3xl font-black text-orange-500 italic uppercase">VROUMIAM</h1>
-            <div class="flex items-center gap-2 text-[10px] font-black uppercase text-green-500">
-                <div class="w-2 h-2 bg-green-500 rounded-full animate-ping"></div> LIVE ADMIN
-            </div>
-        </div>
+    <nav class="bg-black/60 backdrop-blur-xl border-b border-white/5 p-6 sticky top-0 z-50 text-center">
+        <h1 class="text-3xl font-black text-orange-500 italic uppercase">VROUMIAM ADMIN</h1>
     </nav>
 
     <main class="p-6 max-w-2xl mx-auto pb-20">
-        <div class="grid grid-cols-3 gap-3 mb-10">
-            <div class="bg-gray-900 border border-white/5 p-4 rounded-[1.5rem] text-center shadow-xl">
-                <p class="text-[8px] text-gray-500 font-black uppercase tracking-tighter mb-1 italic">Chiffre d'Affaires</p>
-                <p id="stat-ca" class="text-lg font-black text-orange-500 italic">0 F</p>
+        <div class="grid grid-cols-2 gap-3 mb-6">
+            <div class="bg-gray-900 border border-white/5 p-5 rounded-[1.5rem] text-center shadow-xl">
+                <p class="text-[9px] text-gray-500 font-black uppercase tracking-widest mb-1">Ventes Jour</p>
+                <p id="stat-ca" class="text-2xl font-black text-orange-500 italic">0 F</p>
             </div>
-            <div class="bg-gray-900 border border-white/5 p-4 rounded-[1.5rem] text-center shadow-xl">
-                <p class="text-[8px] text-gray-500 font-black uppercase tracking-tighter mb-1 italic">En cours</p>
-                <p id="stat-active" class="text-lg font-black text-white italic">0</p>
-            </div>
-            <div class="bg-gray-900 border border-white/5 p-4 rounded-[1.5rem] text-center shadow-xl">
-                <p class="text-[8px] text-gray-500 font-black uppercase tracking-tighter mb-1 italic">Top Livreur</p>
-                <p id="stat-top" class="text-sm font-black text-white uppercase italic truncate">---</p>
+            <div class="bg-gray-900 border border-white/5 p-5 rounded-[1.5rem] text-center shadow-xl">
+                <p class="text-[9px] text-gray-500 font-black uppercase tracking-widest mb-1">En cours</p>
+                <p id="stat-active" class="text-2xl font-black text-white italic">0</p>
             </div>
         </div>
 
-        <h2 class="text-2xl font-black mb-8 italic flex items-center gap-3">
-            <span class="text-orange-500 underline decoration-2 underline-offset-8 uppercase">📦 COMMANDES</span>
-        </h2>
+        <div class="bg-gray-900 border border-white/5 p-4 rounded-[1.5rem] mb-10 shadow-xl">
+            <p class="text-[9px] text-center text-gray-500 font-black uppercase tracking-[0.2em] mb-4 italic">Performance Livreurs</p>
+            <div class="flex justify-between items-center px-4">
+                <div class="text-center">
+                    <p class="text-[10px] font-bold text-gray-400">MARC</p>
+                    <p id="score-marc" class="text-xl font-black text-white">0</p>
+                </div>
+                <div class="w-px h-8 bg-white/10"></div>
+                <div class="text-center">
+                    <p class="text-[10px] font-bold text-gray-400">BORIS</p>
+                    <p id="score-boris" class="text-xl font-black text-white">0</p>
+                </div>
+                <div class="w-px h-8 bg-white/10"></div>
+                <div class="text-center">
+                    <p class="text-[10px] font-bold text-gray-400">YASMINE</p>
+                    <p id="score-yasmine" class="text-xl font-black text-white">0</p>
+                </div>
+            </div>
+        </div>
+
+        <div class="flex justify-between items-center mb-8">
+            <h2 class="text-2xl font-black italic uppercase tracking-tighter text-orange-500 underline decoration-2 underline-offset-8">📦 Commandes</h2>
+            <button onclick="closeDay()" class="bg-red-600/10 border border-red-600/30 text-red-500 text-[9px] font-black uppercase px-4 py-2 rounded-full hover:bg-red-600 hover:text-white transition active:scale-95">🔒 Clôturer</button>
+        </div>
 
         <div id="orders-list">
-            <div class="text-center py-20">
-                <p class="text-gray-500 text-sm font-bold uppercase tracking-widest">Chargement...</p>
-            </div>
+            <div class="text-center py-20 text-gray-500 font-bold uppercase text-xs">Chargement du flux...</div>
         </div>
     </main>
 </body>
