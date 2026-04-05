@@ -62,8 +62,12 @@
             // 1. Marquer le livreur comme OCCUPÉ dans Firebase
             await update(ref(db, 'livreurs/' + driverId), { disponible: false });
 
-            // 2. Mettre à jour la commande avec le nom du livreur
-            await update(ref(db, 'orders/' + id), { driver: driverName, driverId: driverId });
+            // 2. Mettre à jour la commande avec le nom du livreur et son ID
+            await update(ref(db, 'orders/' + id), { 
+                driver: driverName, 
+                driverId: driverId,
+                status: 'En route' 
+            });
 
             // 3. Préparer et envoyer le message WhatsApp
             const mapsLinkClient = (gps && gps.includes('http')) ? gps : `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(address)}`;
@@ -84,7 +88,7 @@
         };
 
         window.updateStatus = async (id, newStatus, driverId) => {
-            // Si on marque comme livré, on libère le livreur
+            // Si on marque comme livré, on libère le livreur dans Firebase
             if(newStatus === 'Livré' && driverId) {
                 await update(ref(db, 'livreurs/' + driverId), { disponible: true });
             }
@@ -95,6 +99,8 @@
         const livreursRef = ref(db, 'livreurs');
         onValue(livreursRef, (snapshot) => {
             globalLivreurs = snapshot.val() || {};
+            // On ne peut pas facilement rafraîchir uniquement le select sans re-render
+            // Firebase onValue sur orders s'en chargera automatiquement après l'update
         });
 
         const ordersRef = ref(db, 'orders');
@@ -125,9 +131,9 @@
                     let driverOptions = `<option value="">-- Livreur --</option>`;
                     Object.keys(globalLivreurs).forEach(lKey => {
                         const l = globalLivreurs[lKey];
-                        // On affiche si le livreur est disponible OU si c'est lui qui a déjà la commande
-                        if (l.disponible || order.driver === l.nom) {
-                            driverOptions += `<option value="${lKey}" ${order.driver === l.nom ? 'selected' : ''}>🛵 ${l.nom}</option>`;
+                        // RÈGLE : On affiche si le livreur est disponible OU si c'est lui qui a déjà la commande
+                        if (l.disponible === true || order.driverId === lKey) {
+                            driverOptions += `<option value="${lKey}" ${order.driverId === lKey ? 'selected' : ''}>🛵 ${l.nom}</option>`;
                         }
                     });
 
