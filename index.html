@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>VROUMIAM - L'élite de la livraison</title>
+    <title>VROUMIAM - L'élite de la livraison à Cotonou</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script defer src="https://unpkg.com/alpinejs@3.x.x/dist/cdn.min.js"></script>
     
@@ -11,24 +11,25 @@
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-database.js"></script>
 
     <script>
-        // Configuration simplifiée
+        // Configuration Firebase pour VROUMIAM
         const firebaseConfig = {
             apiKey: "AIzaSyBuzgGc5iumNCurtTpVM5X3_3TK95qbQpc",
             authDomain: "vroomiam.firebaseapp.com",
             databaseURL: "https://vroomiam-default-rtdb.europe-west1.firebasedatabase.app",
             projectId: "vroomiam",
             storageBucket: "vroomiam.firebasestorage.app",
+            messagingSenderId: "13433812189",
             appId: "1:13433812189:web:40b8ba4b14cb0a4deb9734"
         };
         
-        // Initialisation immédiate
+        // Initialisation de la base de données
         firebase.initializeApp(firebaseConfig);
-        const db = firebase.database();
+        const database = firebase.database();
     </script>
 
     <style>
         .no-scrollbar::-webkit-scrollbar { display: none; }
-        .glass { background: rgba(255, 255, 255, 0.05); backdrop-filter: blur(12px); border: 1px solid rgba(255, 255, 255, 0.1); }
+        .glass { background: rgba(255, 255, 255, 0.03); backdrop-filter: blur(10px); border: 1px solid rgba(255, 255, 255, 0.05); }
     </style>
 </head>
 <body class="bg-[#050505] text-white font-sans" x-data="{ 
@@ -39,99 +40,144 @@
     name: '', phone: '', address: '', delivery: 'express', isSending: false,
     
     restaurants: [
-        { id: 1, name: 'Burger King', cat: 'burger', price: 3500, img: 'https://images.unsplash.com/photo-1571091718767-18b5b1457add?w=600' },
+        { id: 1, name: 'Burger King Cotonou', cat: 'burger', price: 3500, img: 'https://images.unsplash.com/photo-1571091718767-18b5b1457add?w=600' },
         { id: 2, name: 'Pizza Relax', cat: 'pizza', price: 5000, img: 'https://images.unsplash.com/photo-1513104890138-7c749659a591?w=600' },
-        { id: 3, name: 'Maquis du Port', cat: 'local', price: 2500, img: 'https://images.unsplash.com/photo-1567620905732-2d1ec7bb7445?w=600' }
+        { id: 3, name: 'Maquis du Port', cat: 'local', price: 2500, img: 'https://images.unsplash.com/photo-1567620905732-2d1ec7bb7445?w=600' },
+        { id: 4, name: 'Tacos 229', cat: 'burger', price: 3000, img: 'https://images.unsplash.com/photo-1565299585323-38d6b0865b47?w=600' }
     ],
 
     addToCart(item) { this.cart.push({ ...item, id_order: Date.now() }); },
+    removeFromCart(index) { this.cart.splice(index, 1); },
     get total() { return this.cart.reduce((sum, p) => sum + p.price, 0) + (this.delivery === 'express' ? 1000 : 500); },
 
     async finalizeOrder() {
-        if(!this.name || !this.phone || !this.address) return alert('Infos manquantes !');
+        if(!this.name || !this.phone || !this.address) return alert('Veuillez remplir toutes vos informations !');
         this.isSending = true;
 
-        // Données simplifiées au maximum pour éviter le rejet Firebase
+        // Préparation des données pour ton Tableau de Bord Admin
         const orderData = {
-            nom: this.name,
-            tel: this.phone,
-            lieu: this.address,
-            commande: this.cart.map(p => p.name).join(', '),
-            prix: this.total,
-            date: new Date().toLocaleString(),
-            status: 'Nouveau'
+            clientName: this.name,
+            phone: this.phone,
+            address: this.address,
+            items: this.cart.map(p => p.name).join(', '),
+            restaurant: this.cart.length > 0 ? this.cart.name : 'Vroumiam',
+            total: this.total,
+            delivery: this.delivery,
+            timestamp: Date.now(),
+            status: 'En cours',
+            gps: 'Position par défaut'
         };
 
         try {
-            // Utilisation de la méthode standard (plus rapide)
-            await db.ref('orders').push(orderData);
-            alert('🚀 COMMANDE REÇUE ! Vroumiam arrive.');
-            this.cart = []; this.showCart = false; this.step = 1;
-            this.name = ''; this.phone = ''; this.address = '';
-        } catch(err) { 
-            console.error(err);
-            alert('Erreur Firebase. Vérifie tes Rules (Read/Write = true)'); 
+            // Envoi vers le dossier 'orders' de Firebase
+            await database.ref('orders').push(orderData);
+            
+            alert('🚀 VROUM ! Commande envoyée au tableau de bord.');
+            
+            // Réinitialisation du site
+            this.cart = [];
+            this.showCart = false;
+            this.step = 1;
+            this.name = ''; 
+            this.phone = ''; 
+            this.address = '';
+            
+        } catch(e) { 
+            console.error(e);
+            alert('Erreur de connexion : Vérifie tes Rules Firebase !'); 
         } finally { 
             this.isSending = false; 
         }
     }
 }">
 
-    <nav class="p-6 flex justify-between items-center sticky top-0 bg-black/80 z-50 border-b border-white/5">
-        <h1 class="text-3xl font-black italic text-orange-500">VROUMIAM</h1>
+    <nav class="p-6 flex justify-between items-center sticky top-0 bg-black/80 backdrop-blur-xl z-50 border-b border-white/5">
+        <div>
+            <h1 class="text-3xl font-black italic text-orange-500">VROUMIAM</h1>
+            <p class="text-[10px] text-gray-400 uppercase tracking-widest">Cotonou Prestige</p>
+        </div>
         <button @click="showCart = true" class="glass p-3 rounded-2xl relative">
-            🛍️ <span x-show="cart.length > 0" class="absolute -top-1 -right-1 bg-orange-500 text-white text-[10px] h-5 w-5 flex items-center justify-center rounded-full" x-text="cart.length"></span>
+            <span class="text-xl">🛍️</span>
+            <span x-show="cart.length > 0" class="absolute -top-1 -right-1 bg-orange-500 text-white text-[10px] font-bold h-5 w-5 flex items-center justify-center rounded-full border-2 border-black" x-text="cart.length"></span>
         </button>
     </nav>
 
-    <main class="px-6 py-8 grid grid-cols-1 gap-6">
-        <template x-for="restau in restaurants">
-            <div class="bg-gray-900/50 rounded-3xl overflow-hidden border border-white/5">
-                <img :src="restau.img" class="h-48 w-full object-cover">
-                <div class="p-5 flex justify-between items-center">
+    <div class="flex gap-4 overflow-x-auto px-6 py-6 no-scrollbar">
+        <template x-for="cat in ['all', 'burger', 'pizza', 'local']">
+            <button @click="category = cat" 
+                :class="category === cat ? 'bg-orange-500 text-black shadow-lg' : 'glass text-gray-400'"
+                class="px-8 py-3 rounded-2xl font-bold transition-all"
+                x-text="cat === 'all' ? 'Tout' : cat">
+            </button>
+        </template>
+    </div>
+
+    <main class="px-6 pb-24 grid grid-cols-1 gap-8">
+        <template x-for="restau in restaurants" :key="restau.id">
+            <div x-show="category === 'all' || category === restau.cat" class="bg-gray-900/40 rounded-[2.5rem] p-3 border border-white/5 shadow-2xl">
+                <div class="relative h-64 rounded-[2rem] overflow-hidden">
+                    <img :src="restau.img" class="w-full h-full object-cover">
+                </div>
+                <div class="p-5 flex justify-between items-end">
                     <div>
-                        <h3 class="text-xl font-bold" x-text="restau.name"></h3>
-                        <p class="text-orange-500 font-bold" x-text="restau.price + ' FCFA'"></p>
+                        <h3 class="text-2xl font-black" x-text="restau.name"></h3>
+                        <span class="text-orange-500 font-black text-xl" x-text="restau.price + ' FCFA'"></span>
                     </div>
-                    <button @click="addToCart(restau)" class="bg-orange-500 text-black h-12 w-12 rounded-xl font-bold">+</button>
+                    <button @click="addToCart(restau)" class="bg-orange-500 text-black h-14 w-14 rounded-2xl flex items-center justify-center font-black text-2xl active:scale-90 transition">+</button>
                 </div>
             </div>
         </template>
     </main>
 
-    <div x-show="showCart" class="fixed inset-0 z-50 bg-black/98 p-6 flex flex-col" x-transition>
-        <div class="flex justify-between mb-8">
-            <button @click="showCart = false" class="text-gray-400 font-bold">RETOUR</button>
-            <span class="text-orange-500 font-bold">VOTRE PANIER</span>
+    <div x-show="showCart" class="fixed inset-0 z-50 flex flex-col bg-black/95 backdrop-blur-2xl p-6" x-transition>
+        <div class="flex justify-between items-center mb-8">
+            <button @click="showCart = false; step = 1" class="text-gray-400 text-lg">Retour</button>
+            <div class="flex gap-2">
+                <div :class="step >= 1 ? 'bg-orange-500' : 'bg-gray-800'" class="h-1 w-8 rounded-full"></div>
+                <div :class="step >= 2 ? 'bg-orange-500' : 'bg-gray-800'" class="h-1 w-8 rounded-full"></div>
+            </div>
+            <div class="w-10"></div>
         </div>
 
         <div x-show="step === 1" class="flex flex-col h-full">
-            <div class="flex-1 overflow-y-auto space-y-4">
-                <template x-for="item in cart">
-                    <div class="glass p-4 rounded-2xl flex justify-between items-center">
-                        <span x-text="item.name"></span>
-                        <span class="text-orange-500 font-bold" x-text="item.price + ' FCFA'"></span>
+            <h2 class="text-4xl font-black mb-8 italic">MON <span class="text-orange-500">PANIER</span></h2>
+            <div class="flex-1 overflow-y-auto space-y-4 no-scrollbar">
+                <template x-for="(item, index) in cart" :key="item.id_order">
+                    <div class="glass p-5 rounded-[2rem] flex justify-between items-center">
+                        <div>
+                            <p class="font-bold text-lg" x-text="item.name"></p>
+                            <p class="text-orange-500 font-black" x-text="item.price + ' FCFA'"></p>
+                        </div>
+                        <button @click="removeFromCart(index)" class="text-red-500 text-sm font-bold uppercase">Retirer</button>
                     </div>
                 </template>
             </div>
-            <div x-show="cart.length > 0" class="pt-6 border-t border-white/10">
-                <div class="flex justify-between text-xl font-bold mb-4">
+            <div x-show="cart.length > 0" class="pt-6 border-t border-white/5 space-y-4">
+                <div class="flex justify-between items-center text-xl font-black">
                     <span>TOTAL</span>
                     <span class="text-orange-500" x-text="total + ' FCFA'"></span>
                 </div>
-                <button @click="step = 2" class="w-full bg-orange-500 text-black font-black py-5 rounded-2xl text-xl">LIVRER ICI</button>
+                <button @click="step = 2" class="w-full bg-orange-500 text-black font-black py-6 rounded-[2rem] text-xl">LIVRER MOI</button>
             </div>
         </div>
 
-        <div x-show="step === 2" class="space-y-4">
-            <input x-model="name" type="text" placeholder="Ton Nom" class="w-full glass p-5 rounded-2xl outline-none border-none">
-            <input x-model="phone" type="tel" placeholder="Numéro de téléphone" class="w-full glass p-5 rounded-2xl outline-none border-none">
-            <input x-model="address" type="text" placeholder="Quartier précis" class="w-full glass p-5 rounded-2xl outline-none border-none">
-            
-            <button @click="finalizeOrder" :disabled="isSending" class="w-full bg-white text-black font-black py-5 rounded-2xl text-xl mt-4">
-                <span x-show="!isSending">VALIDER LA COMMANDE 🛵</span>
-                <span x-show="isSending">CHARGEMENT...</span>
-            </button>
+        <div x-show="step === 2" class="flex flex-col h-full">
+            <h2 class="text-4xl font-black mb-8 italic text-orange-500">INFOS CLIENT</h2>
+            <div class="space-y-4">
+                <input x-model="name" type="text" placeholder="Ton Nom Complet" class="w-full glass p-6 rounded-2xl outline-none focus:border-orange-500 transition">
+                <input x-model="phone" type="tel" placeholder="Numéro Moov ou MTN" class="w-full glass p-6 rounded-2xl outline-none focus:border-orange-500 transition">
+                <input x-model="address" type="text" placeholder="Quartier et indications" class="w-full glass p-6 rounded-2xl outline-none focus:border-orange-500 transition">
+                
+                <div class="grid grid-cols-2 gap-3 pt-4">
+                    <button @click="delivery = 'express'" :class="delivery === 'express' ? 'border-orange-500 bg-orange-500/10 text-orange-500' : 'border-white/5'" class="border p-4 rounded-2xl">🚀 Express</button>
+                    <button @click="delivery = 'standard'" :class="delivery === 'standard' ? 'border-orange-500 bg-orange-500/10 text-orange-500' : 'border-white/5'" class="border p-4 rounded-2xl">🐢 Standard</button>
+                </div>
+
+                <button @click="finalizeOrder" :disabled="isSending" class="w-full bg-white text-black font-black py-6 rounded-[2rem] text-xl mt-6 active:scale-95 transition-all">
+                    <span x-show="!isSending">VALIDER LA COMMANDE 🛵</span>
+                    <span x-show="isSending">ENVOI EN COURS...</span>
+                </button>
+            </div>
         </div>
     </div>
 </body>
