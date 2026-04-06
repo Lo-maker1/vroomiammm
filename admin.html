@@ -22,10 +22,19 @@
         const app = initializeApp(firebaseConfig);
         const db = getDatabase(app);
 
+        // --- ANNUAIRE DES LIVREURS ---
         const driverNumbers = {
             'Marc': '22990000000', 
             'Boris': '2290195480000',
             'Yasmine': '22992000000'
+        };
+
+        // --- ANNUAIRE DES RESTAURANTS ---
+        // Ajoute ici tes numéros de restaurants partenaires
+        const restaurantNumbers = {
+            'Grill': '22943923862',
+            'McQueen': '22900000000',
+            'Oklm': '22900000000'
         };
 
         window.closeDay = () => {
@@ -46,17 +55,20 @@
             }
         };
 
-        // MISE À JOUR : On récupère maintenant 'restauGPS' et 'restaurant'
+        // FONCTION MISE À JOUR : Notification Double (Livreur + Resto)
         window.sendToDriver = (id, name, phone, address, items, total, gps, restauGPS, restaurant) => {
             const selectEl = document.getElementById(`select-${id}`);
             const driverName = selectEl.value;
             if(!driverName) return alert("Choisis un livreur !");
             
-            const num = driverNumbers[driverName];
+            const dNum = driverNumbers[driverName];
+            const rNum = restaurantNumbers[restaurant];
+
             const mapsLinkClient = (gps && gps.includes('http')) ? gps : `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(address)}`;
             const mapsLinkResto = (restauGPS && restauGPS.includes('http')) ? restauGPS : 'Position non définie';
 
-            const msg = `🚀 *COURSE VROUMIAM* 🛵\n` +
+            // 1. MESSAGE POUR LE LIVREUR
+            const msgLivreur = `🚀 *COURSE VROUMIAM* 🛵\n` +
                         `------------------------------\n` +
                         `🏢 *RESTO :* ${restaurant || 'Vroumiam'}\n` +
                         `🍔 *MENU :* ${items}\n` +
@@ -67,7 +79,26 @@
                         `📍 *GPS CLIENT :*\n${mapsLinkClient}\n` +
                         `------------------------------`;
             
-            window.open(`https://wa.me/${num}?text=${encodeURIComponent(msg)}`, '_blank');
+            // 2. MESSAGE POUR LE RESTAURANT
+            const msgResto = `🍳 *COMMANDE À PRÉPARER*\n` +
+                        `------------------------------\n` +
+                        `📝 *MENU :* ${items}\n` +
+                        `🛵 *LIVREUR :* ${driverName} (${dNum})\n\n` +
+                        `*NB :* Le livreur arrive bientôt. Merci de lancer la préparation ! ⏱️\n` +
+                        `------------------------------`;
+
+            // Ouverture WhatsApp Livreur
+            window.open(`https://wa.me/${dNum}?text=${encodeURIComponent(msgLivreur)}`, '_blank');
+
+            // Ouverture WhatsApp Restaurant (avec délai de 800ms pour éviter le blocage pop-up)
+            if(rNum) {
+                setTimeout(() => {
+                    window.open(`https://wa.me/${rNum}?text=${encodeURIComponent(msgResto)}`, '_blank');
+                }, 800);
+            }
+
+            // Mise à jour du statut
+            update(ref(db, 'orders/' + id), { status: 'En route', driver: driverName });
         };
 
         window.updateStatus = (id, newStatus) => {
@@ -133,7 +164,7 @@
                                         <option value="Boris" ${order.driver === 'Boris' ? 'selected' : ''}>🛵 Boris</option>
                                         <option value="Yasmine" ${order.driver === 'Yasmine' ? 'selected' : ''}>🛵 Yasmine</option>
                                     </select>
-                                    <button onclick="sendToDriver('${id}', '${order.clientName}', '${order.phone}', '${order.address}', '${order.items}', '${order.total}', '${order.gps || ''}', '${order.restauGPS || ''}', '${order.restaurant || ''}')" class="bg-orange-500 text-black px-6 rounded-2xl font-black text-xs active:scale-90 transition uppercase shadow-lg">🚀 Go</button>
+                                    <button onclick="sendToDriver('${id}', '${String(order.clientName).replace(/'/g, "\\'")}', '${order.phone}', '${String(order.address).replace(/'/g, "\\'")}', '${String(order.items).replace(/'/g, "\\'")}', '${order.total}', '${order.gps || ''}', '${order.restauGPS || ''}', '${String(order.restaurant || '').replace(/'/g, "\\'")}')" class="bg-orange-500 text-black px-6 rounded-2xl font-black text-xs active:scale-90 transition uppercase shadow-lg">🚀 Go</button>
                                 </div>
                             </div>
                             <div class="mt-4 flex gap-3">
