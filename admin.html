@@ -22,7 +22,6 @@
         const app = initializeApp(firebaseConfig);
         const db = getDatabase(app);
 
-        // --- ANNUAIRE DES LIVREURS ---
         const driverNumbers = {
             'Marc': '22990000000', 
             'Boris': '2290195480000',
@@ -30,11 +29,11 @@
         };
 
         // --- ANNUAIRE DES RESTAURANTS ---
-        // Ajoute ici tes numéros de restaurants partenaires
+        // IMPORTANT : Ecris les noms ici en MINUSCULES (ex: 'oklm')
         const restaurantNumbers = {
-            'Grill': '22943923862',
-            'McQueen': '22900000000',
-            'Oklm': '22900000000'
+            'Gril': '22943923862',
+            'mcqueen': '22900000000',
+            'oklm': '22900000000'
         };
 
         window.closeDay = () => {
@@ -55,19 +54,18 @@
             }
         };
 
-        // FONCTION MISE À JOUR : Notification Double (Livreur + Resto)
         window.sendToDriver = (id, name, phone, address, items, total, gps, restauGPS, restaurant) => {
             const selectEl = document.getElementById(`select-${id}`);
             const driverName = selectEl.value;
             if(!driverName) return alert("Choisis un livreur !");
             
             const dNum = driverNumbers[driverName];
-            const rNum = restaurantNumbers[restaurant];
+            const restoKey = String(restaurant).toLowerCase().trim();
+            const rNum = restaurantNumbers[restoKey];
 
-            const mapsLinkClient = (gps && gps.includes('http')) ? gps : `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(address)}`;
+            const mapsLinkClient = (gps && gps.includes('http')) ? gps : `http://google.com/maps?q=${encodeURIComponent(address)}`;
             const mapsLinkResto = (restauGPS && restauGPS.includes('http')) ? restauGPS : 'Position non définie';
 
-            // 1. MESSAGE POUR LE LIVREUR
             const msgLivreur = `🚀 *COURSE VROUMIAM* 🛵\n` +
                         `------------------------------\n` +
                         `🏢 *RESTO :* ${restaurant || 'Vroumiam'}\n` +
@@ -79,7 +77,6 @@
                         `📍 *GPS CLIENT :*\n${mapsLinkClient}\n` +
                         `------------------------------`;
             
-            // 2. MESSAGE POUR LE RESTAURANT
             const msgResto = `🍳 *COMMANDE À PRÉPARER*\n` +
                         `------------------------------\n` +
                         `📝 *MENU :* ${items}\n` +
@@ -87,17 +84,18 @@
                         `*NB :* Le livreur arrive bientôt. Merci de lancer la préparation ! ⏱️\n` +
                         `------------------------------`;
 
-            // Ouverture WhatsApp Livreur
+            // 1. Ouvrir WhatsApp Livreur
             window.open(`https://wa.me/${dNum}?text=${encodeURIComponent(msgLivreur)}`, '_blank');
 
-            // Ouverture WhatsApp Restaurant (avec délai de 800ms pour éviter le blocage pop-up)
+            // 2. Vérifier et envoyer au restaurant
             if(rNum) {
-                setTimeout(() => {
-                    window.open(`https://wa.me/${rNum}?text=${encodeURIComponent(msgResto)}`, '_blank');
-                }, 800);
+                // Cette alerte force le navigateur à autoriser la deuxième fenêtre
+                alert(`Livreur informé ! Appuyez sur OK pour envoyer la commande à ${restaurant}.`);
+                window.open(`https://wa.me/${rNum}?text=${encodeURIComponent(msgResto)}`, '_blank');
+            } else {
+                alert(`Attention: Le numéro de "${restaurant}" n'est pas dans ton annuaire.`);
             }
 
-            // Mise à jour du statut
             update(ref(db, 'orders/' + id), { status: 'En route', driver: driverName });
         };
 
@@ -113,18 +111,15 @@
         onValue(ordersRef, (snapshot) => {
             const data = snapshot.val();
             const container = document.getElementById('orders-list');
-            
             let totalCA = 0;
             let activeOrders = 0;
             let driverStats = { 'Marc': 0, 'Boris': 0, 'Yasmine': 0 };
 
             container.innerHTML = '';
-
             if (data) {
                 Object.keys(data).reverse().forEach(id => {
                     const order = data[id];
                     if (order.archived === true) return;
-
                     const hasGPS = order.gps && order.gps.includes('http');
                     if (order.status === 'Livré') {
                         totalCA += parseInt(order.total) || 0;
@@ -133,7 +128,7 @@
                         activeOrders++;
                     }
 
-                    const card = `
+                    container.innerHTML += `
                         <div class="bg-gray-900 p-6 rounded-[2rem] border border-white/5 mb-6 shadow-2xl">
                             <div class="flex justify-between items-start">
                                 <div>
@@ -173,12 +168,9 @@
                             </div>
                         </div>
                     `;
-                    container.innerHTML += card;
                 });
-
                 document.getElementById('stat-ca').innerText = totalCA.toLocaleString() + ' F';
                 document.getElementById('stat-active').innerText = activeOrders;
-                
                 document.getElementById('score-marc').innerText = driverStats['Marc'];
                 document.getElementById('score-boris').innerText = driverStats['Boris'];
                 document.getElementById('score-yasmine').innerText = driverStats['Yasmine'];
@@ -187,11 +179,9 @@
     </script>
 </head>
 <body class="bg-[#050505] text-white min-h-screen font-sans">
-
     <nav class="bg-black/60 backdrop-blur-xl border-b border-white/5 p-6 sticky top-0 z-50 text-center">
         <h1 class="text-3xl font-black text-orange-500 italic uppercase">VROUMIAM ADMIN</h1>
     </nav>
-
     <main class="p-6 max-w-2xl mx-auto pb-20">
         <div class="grid grid-cols-2 gap-3 mb-6">
             <div class="bg-gray-900 border border-white/5 p-5 rounded-[1.5rem] text-center shadow-xl">
@@ -203,32 +193,20 @@
                 <p id="stat-active" class="text-2xl font-black text-white italic">0</p>
             </div>
         </div>
-
         <div class="bg-gray-900 border border-white/5 p-4 rounded-[1.5rem] mb-10 shadow-xl">
             <p class="text-[9px] text-center text-gray-500 font-black uppercase tracking-[0.2em] mb-4 italic">Performance Livreurs</p>
             <div class="flex justify-between items-center px-4">
-                <div class="text-center">
-                    <p class="text-[10px] font-bold text-gray-400 tracking-tighter">MARC</p>
-                    <p id="score-marc" class="text-xl font-black text-white">0</p>
-                </div>
+                <div class="text-center"><p class="text-[10px] font-bold text-gray-400 tracking-tighter">MARC</p><p id="score-marc" class="text-xl font-black text-white">0</p></div>
                 <div class="w-px h-8 bg-white/10"></div>
-                <div class="text-center">
-                    <p class="text-[10px] font-bold text-gray-400 tracking-tighter">BORIS</p>
-                    <p id="score-boris" class="text-xl font-black text-white">0</p>
-                </div>
+                <div class="text-center"><p class="text-[10px] font-bold text-gray-400 tracking-tighter">BORIS</p><p id="score-boris" class="text-xl font-black text-white">0</p></div>
                 <div class="w-px h-8 bg-white/10"></div>
-                <div class="text-center">
-                    <p class="text-[10px] font-bold text-gray-400 tracking-tighter text-orange-500">YASMINE</p>
-                    <p id="score-yasmine" class="text-xl font-black text-white">0</p>
-                </div>
+                <div class="text-center"><p class="text-[10px] font-bold text-gray-400 tracking-tighter text-orange-500">YASMINE</p><p id="score-yasmine" class="text-xl font-black text-white">0</p></div>
             </div>
         </div>
-
         <div class="flex justify-between items-center mb-8">
             <h2 class="text-2xl font-black italic uppercase tracking-tighter text-orange-500 underline decoration-2 underline-offset-8">📦 Commandes</h2>
-            <button onclick="closeDay()" class="bg-red-600/10 border border-red-600/30 text-red-500 text-[9px] font-black uppercase px-4 py-2 rounded-full hover:bg-red-600 hover:text-white transition active:scale-95">🔒 Clôturer</button>
+            <button onclick="closeDay()" class="bg-red-600/10 border border-red-600/30 text-red-500 text-[9px] font-black uppercase px-4 py-2 rounded-full transition active:scale-95">🔒 Clôturer</button>
         </div>
-
         <div id="orders-list">
             <div class="text-center py-20 text-gray-500 font-bold uppercase text-xs">Chargement du flux...</div>
         </div>
