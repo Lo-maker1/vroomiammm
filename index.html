@@ -86,14 +86,14 @@
         } catch (e) { gpsClient = 'GPS désactivé'; }
 
         // Construction du message pour la boutique (WhatsApp)
-        const itemsList = this.cart.map(p => '- ' + p.name).join('%0A');
-        const waMessage = `*NOUVELLE COMMANDE VROUMIAM*%0A%0A*Client:* ${this.name}%0A*Contact:* ${this.phone}%0A%0A*COMMANDE:*%0A${itemsList}%0A%0A*Total:* ${this.total} F%0A*Paiement:* ${this.paymentMethod}`;
+        const itemsList = this.cart.map(p => '- ' + p.name).join('\n');
+        const waMessage = `*NOUVELLE COMMANDE VROUMIAM*\n\n*Client:* ${this.name}\n*Contact:* ${this.phone}\n\n*COMMANDE:*\n${itemsList}\n\n*Total:* ${this.total} F\n*Paiement:* ${this.paymentMethod}\n\n*Localisation client:* ${gpsClient}`;
 
         const orderData = {
             clientName: this.name, phone: this.phone, address: this.address,
             items: this.cart.map(p => p.name).join(', '),
             restaurant: this.selectedRestau.name,
-            restauWhatsApp: this.selectedRestau.phone,
+            restauWhatsApp: this.selectedRestau.phone, // Clé synchronisée avec l'admin
             restauGPS: this.selectedRestau.gps,
             total: this.total, payment: this.paymentMethod,
             timestamp: Date.now(), status: 'En cours', gps: gpsClient,
@@ -105,15 +105,16 @@
                 method: 'POST', body: JSON.stringify(orderData)
             });
             if (response.ok) {
-                // On redirige vers WhatsApp pour la boutique
-                window.open(`https://wa.me/${this.selectedRestau.phone}?text=${waMessage}`, '_blank');
+                // Ouverture WhatsApp
+                window.open(`https://wa.me/${this.selectedRestau.phone}?text=${encodeURIComponent(waMessage)}`, '_blank');
                 
                 this.view = 'tracking'; 
                 this.showCart = false;
                 this.orderStatus = 'Cuisine';
-                setTimeout(() => { this.orderStatus = 'Route'; }, 7000);
+                // Simulation du changement de statut pour l'UX utilisateur
+                setTimeout(() => { this.orderStatus = 'Route'; }, 15000);
             }
-        } catch (e) { alert('Erreur connexion'); } finally { this.isSending = false; }
+        } catch (e) { alert('Erreur de connexion à la base de données'); } finally { this.isSending = false; }
     }
 }">
 
@@ -234,7 +235,7 @@
         <button @click="shareVroumiam()" class="w-full bg-black text-white py-5 rounded-xl font-black uppercase text-sm tracking-widest shadow-xl">Partager mon trajet</button>
     </main>
 
-    <div x-show="tempItem" class="fixed inset-0 z- bg-black/80 backdrop-blur-sm flex items-end justify-center" x-transition>
+    <div x-show="tempItem" class="fixed inset-0 z-50 bg-black/80 backdrop-blur-sm flex items-end justify-center" x-transition>
         <div class="bg-[#0A0A0A] w-full rounded-t-[2.5rem] p-8 border-t border-white/10 shadow-2xl pb-12">
             <div class="w-12 h-1 bg-zinc-800 rounded-full mx-auto mb-8"></div>
             <h3 class="text-2xl font-black mb-8 uppercase tracking-tight text-white text-center" x-text="tempItem?.name"></h3>
