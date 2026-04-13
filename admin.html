@@ -59,16 +59,16 @@
             if(!driverName) return alert("Choisis un livreur !");
             
             const dNum = driverNumbers[driverName];
-            
-            // MODIFICATION : On cherche d'abord dans les données de la commande, sinon dans l'annuaire
             const restoKey = String(restaurant).toLowerCase().trim();
             
-            // Récupération du numéro (soit passé par l'index, soit dans l'annuaire local)
             const ordersRef = ref(db, 'orders/' + id);
             onValue(ordersRef, (snapshot) => {
                 const orderData = snapshot.val();
-                const rNum = orderData.restaurantPhone || restaurantNumbers[restoKey];
+                
+                // CORRECTION : L'index envoie 'restauWhatsApp', on vérifie donc cette clé en priorité
+                const rNum = orderData.restauWhatsApp || orderData.restaurantPhone || restaurantNumbers[restoKey];
 
+                // Nettoyage des liens GPS (Correction de la syntaxe {5})
                 const mapsLinkClient = (gps && gps.includes('http')) ? gps : `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(address)}`;
                 const mapsLinkResto = (restauGPS && restauGPS.includes('http')) ? restauGPS : 'Position non définie';
 
@@ -133,6 +133,13 @@
                     const hasGPS = order.gps && order.gps.includes('http');
                     const hasRestoGPS = order.restauGPS && order.restauGPS.includes('http');
 
+                    // Variables de sécurité pour éviter le crash si des données manquent
+                    const clientName = order.clientName || 'Inconnu';
+                    const items = order.items || 'Non spécifié';
+                    const address = order.address || 'Non spécifiée';
+                    const phone = order.phone || 'N/A';
+                    const restaurant = order.restaurant || 'Resto';
+
                     if (order.status === 'Livré') {
                         totalCA += parseInt(order.total) || 0;
                         if (order.driver && driverStats[order.driver] !== undefined) driverStats[order.driver]++;
@@ -146,12 +153,12 @@
                                 <div>
                                     <div class="flex items-center gap-2 mb-1">
                                         <h3 class="text-orange-500 font-black text-xl italic uppercase tracking-tighter">#${id.slice(-4)}</h3>
-                                        <span class="text-[10px] bg-white/10 px-2 py-0.5 rounded text-gray-400 font-bold uppercase tracking-widest">${order.restaurant || 'Resto'}</span>
+                                        <span class="text-[10px] bg-white/10 px-2 py-0.5 rounded text-gray-400 font-bold uppercase tracking-widest">${restaurant}</span>
                                     </div>
-                                    <p class="text-white font-bold text-lg mt-1">${order.items}</p>
+                                    <p class="text-white font-bold text-lg mt-1">${items}</p>
                                     <div class="mt-3 space-y-2 text-sm text-gray-400">
-                                        <p>👤 <span class="text-white">${order.clientName}</span> (${order.phone})</p>
-                                        <p>📍 ${order.address}</p>
+                                        <p>👤 <span class="text-white">${clientName}</span> (${phone})</p>
+                                        <p>📍 ${address}</p>
                                         <div class="flex gap-2 mt-2">
                                             ${hasGPS ? `<a href="${order.gps}" target="_blank" class="inline-flex items-center gap-2 bg-blue-600/20 text-blue-400 px-3 py-2 rounded-xl text-[10px] font-black uppercase border border-blue-600/30 italic">📍 Client</a>` : ''}
                                             ${hasRestoGPS ? `<a href="${order.restauGPS}" target="_blank" class="inline-flex items-center gap-2 bg-orange-500/20 text-orange-500 px-3 py-2 rounded-xl text-[10px] font-black uppercase border border-orange-500/30 italic">🏢 Resto</a>` : ''}
@@ -171,12 +178,12 @@
                                         <option value="Boris" ${order.driver === 'Boris' ? 'selected' : ''}>🛵 Boris</option>
                                         <option value="Yasmine" ${order.driver === 'Yasmine' ? 'selected' : ''}>🛵 Yasmine</option>
                                     </select>
-                                    <button onclick="sendToDriver('${id}', '${String(order.clientName).replace(/'/g, "\\'")}', '${order.phone}', '${String(order.address).replace(/'/g, "\\'")}', '${String(order.items).replace(/'/g, "\\'")}', '${order.total}', '${order.gps || ''}', '${order.restauGPS || ''}', '${String(order.restaurant || '').replace(/'/g, "\\'")}')" class="bg-orange-500 text-black px-6 rounded-2xl font-black text-xs active:scale-90 transition uppercase shadow-lg">🚀 Go</button>
+                                    <button onclick="sendToDriver('${id}', '${String(clientName).replace(/'/g, "\\'")}', '${phone}', '${String(address).replace(/'/g, "\\'")}', '${String(items).replace(/'/g, "\\'")}', '${order.total}', '${order.gps || ''}', '${order.restauGPS || ''}', '${String(restaurant).replace(/'/g, "\\'")}')" class="bg-orange-500 text-black px-6 rounded-2xl font-black text-xs active:scale-90 transition uppercase shadow-lg">🚀 Go</button>
                                 </div>
                             </div>
                             <div class="mt-4 flex gap-3">
                                 <button onclick="updateStatus('${id}', 'Livré')" class="flex-1 bg-white/5 border border-white/10 text-green-500 font-bold py-4 rounded-2xl transition uppercase text-[10px]">✅ Livré</button>
-                                <a href="https://wa.me/${order.phone}" target="_blank" class="bg-[#25D366]/10 border border-[#25D366]/20 text-[#25D366] font-bold px-6 py-4 rounded-2xl italic text-[10px] flex items-center justify-center font-black">💬 Client</a>
+                                <a href="https://wa.me/${phone}" target="_blank" class="bg-[#25D366]/10 border border-[#25D366]/20 text-[#25D366] font-bold px-6 py-4 rounded-2xl italic text-[10px] flex items-center justify-center font-black">💬 Client</a>
                             </div>
                         </div>
                     `;
