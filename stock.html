@@ -1,0 +1,182 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>VROUMIAM | Gestionnaire de Stock</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script defer src="https://unpkg.com/alpinejs@3.x.x/dist/cdn.min.js"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;600;900&display=swap" rel="stylesheet">
+    <style>
+        body { font-family: 'Outfit', sans-serif; background-color: #050505; color: white; }
+        .no-scrollbar::-webkit-scrollbar { display: none; }
+        .input-field { background: #111; border: 1px solid #222; border-radius: 14px; padding: 12px 16px; width: 100%; outline: none; transition: 0.3s; font-size: 14px; color: white; }
+        .input-field:focus { border-color: #f97316; box-shadow: 0 0 10px rgba(249, 115, 22, 0.1); }
+        .folder-card { background: #0c0c0c; border: 1px solid #1a1a1a; transition: 0.3s; border-radius: 24px; }
+        .btn-primary { background: #f97316; color: black; font-weight: 800; padding: 14px; border-radius: 14px; transition: 0.2s; }
+        .btn-primary:active { transform: scale(0.98); }
+    </style>
+</head>
+<body x-data="stockManager()">
+
+    <nav class="p-6 border-b border-white/5 flex justify-between items-center sticky top-0 bg-black/95 backdrop-blur-md z-50">
+        <div>
+            <h1 class="text-xl font-black tracking-tighter uppercase">VROUMIAM <span class="text-orange-500 text-[10px] ml-1">STOCK GESTION</span></h1>
+        </div>
+        <div class="flex items-center gap-2 bg-orange-500/10 px-4 py-1.5 rounded-full border border-orange-500/20">
+            <span class="text-[10px] text-orange-500 font-black uppercase tracking-widest">Base de données Active</span>
+        </div>
+    </nav>
+
+    <main class="p-6 pb-32 max-w-2xl mx-auto">
+        
+        <section class="mb-12">
+            <div class="flex items-center gap-3 mb-6 px-2">
+                <div class="h-6 w-1 bg-orange-500 rounded-full"></div>
+                <h2 class="text-lg font-black uppercase italic tracking-tight">Nouveau Dossier Boutique</h2>
+            </div>
+            
+            <div class="space-y-4 bg-zinc-900/20 p-6 rounded-[2.5rem] border border-white/5 shadow-2xl">
+                <div class="space-y-4">
+                    <div>
+                        <label class="text-[10px] font-black uppercase text-zinc-500 ml-2 mb-1 block">Nom de la Boutique</label>
+                        <input x-model="newRestau.name" type="text" placeholder="ex: Grillbaz" class="input-field">
+                    </div>
+                    <div class="grid grid-cols-2 gap-4">
+                        <div>
+                            <label class="text-[10px] font-black uppercase text-zinc-500 ml-2 mb-1 block">WhatsApp Boutique</label>
+                            <input x-model="newRestau.phone" type="tel" placeholder="22997000000" class="input-field">
+                        </div>
+                        <div>
+                            <label class="text-[10px] font-black uppercase text-zinc-500 ml-2 mb-1 block">Coordonnées GPS</label>
+                            <input x-model="newRestau.gps" type="text" placeholder="6.37, 2.42" class="input-field">
+                        </div>
+                    </div>
+                    <div>
+                        <label class="text-[10px] font-black uppercase text-zinc-500 ml-2 mb-1 block">Image Cover (URL)</label>
+                        <input x-model="newRestau.img" type="text" placeholder="https://image-lien.com/photo.jpg" class="input-field">
+                    </div>
+                </div>
+                <button @click="addRestaurant()" class="btn-primary w-full mt-2 uppercase text-xs tracking-widest">Créer le dossier boutique</button>
+            </div>
+        </section>
+
+        <section>
+            <div class="flex items-center justify-between mb-6 px-2">
+                <h2 class="text-lg font-black uppercase italic tracking-tight">Dossiers Existants</h2>
+                <span class="text-[10px] bg-zinc-800 px-3 py-1 rounded-full font-bold" x-text="restaurants.length + ' boutiques'"></span>
+            </div>
+
+            <div class="space-y-4">
+                <template x-for="(restau, index) in restaurants" :key="restau.id">
+                    <div class="folder-card overflow-hidden">
+                        <div class="p-5 flex justify-between items-center bg-white/[0.01]">
+                            <div class="flex items-center gap-4">
+                                <div class="h-12 w-12 rounded-2xl bg-zinc-900 border border-white/5 overflow-hidden">
+                                    <img :src="restau.img" class="w-full h-full object-cover opacity-60">
+                                </div>
+                                <div>
+                                    <h3 class="font-black text-sm uppercase leading-none mb-1" x-text="restau.name"></h3>
+                                    <p class="text-[9px] text-zinc-500 font-bold uppercase" x-text="'WA: ' + restau.phone"></p>
+                                </div>
+                            </div>
+                            <div class="flex items-center gap-2">
+                                <button @click="activeFolder = (activeFolder === index ? null : index)" 
+                                        :class="activeFolder === index ? 'bg-orange-500 text-black' : 'bg-zinc-800 text-zinc-400'"
+                                        class="h-10 w-10 flex items-center justify-center rounded-xl font-bold transition-all shadow-lg">
+                                    <span x-text="activeFolder === index ? '×' : '📂'"></span>
+                                </button>
+                                <button @click="deleteRestau(index)" class="h-10 w-10 bg-red-500/10 text-red-500 flex items-center justify-center rounded-xl font-bold">🗑️</button>
+                            </div>
+                        </div>
+
+                        <div x-show="activeFolder === index" x-transition class="p-6 border-t border-white/5 bg-black/60">
+                            <div class="mb-6">
+                                <p class="text-[9px] font-black text-orange-500 uppercase tracking-widest mb-4 italic underline">Indexation nouveaux plats</p>
+                                <div class="space-y-3 bg-zinc-900/30 p-4 rounded-2xl border border-white/5">
+                                    <input x-model="newDish.name" type="text" placeholder="Nom du plat" class="input-field !text-xs !p-3">
+                                    <div class="grid grid-cols-2 gap-3">
+                                        <input x-model="newDish.price" type="number" placeholder="Prix (F)" class="input-field !text-xs !p-3">
+                                        <input x-model="newDish.img" type="text" placeholder="URL Photo" class="input-field !text-xs !p-3">
+                                    </div>
+                                    <button @click="addDish(index)" class="w-full bg-white text-black py-3 rounded-xl font-black uppercase text-[10px] tracking-widest">Ajouter au stock</button>
+                                </div>
+                            </div>
+
+                            <div class="space-y-2">
+                                <template x-for="(dish, dIndex) in restau.menu" :key="dIndex">
+                                    <div class="flex items-center justify-between p-3 bg-zinc-900/20 rounded-xl border border-white/5">
+                                        <div class="flex items-center gap-3">
+                                            <img :src="dish.img" class="h-10 w-10 rounded-lg object-cover">
+                                            <div>
+                                                <p class="text-xs font-bold" x-text="dish.name"></p>
+                                                <p class="text-[10px] text-orange-500 font-black" x-text="dish.price + ' F'"></p>
+                                            </div>
+                                        </div>
+                                        <button @click="restau.menu.splice(dIndex, 1); saveStock()" class="text-zinc-700 hover:text-red-500 font-black px-2 text-xl">×</button>
+                                    </div>
+                                </template>
+                            </div>
+                        </div>
+                    </div>
+                </template>
+            </div>
+        </section>
+    </main>
+
+    <script>
+        function stockManager() {
+            return {
+                // Charge les données depuis le localStorage pour que index.html puisse les lire
+                restaurants: JSON.parse(localStorage.getItem('vroum_stock')) || [],
+                activeFolder: null,
+                newRestau: { name: '', phone: '', gps: '', img: '' },
+                newDish: { name: '', price: '', img: '' },
+
+                saveStock() {
+                    localStorage.setItem('vroum_stock', JSON.stringify(this.restaurants));
+                },
+
+                addRestaurant() {
+                    if(!this.newRestau.name || !this.newRestau.phone) {
+                        alert('Le nom et le numéro WhatsApp sont obligatoires pour indexer la boutique.');
+                        return;
+                    }
+                    this.restaurants.push({
+                        id: Date.now(),
+                        name: this.newRestau.name,
+                        phone: this.newRestau.phone,
+                        gps: this.newRestau.gps,
+                        img: this.newRestau.img,
+                        menu: []
+                    });
+                    this.newRestau = { name: '', phone: '', gps: '', img: '' };
+                    this.saveStock();
+                },
+
+                addDish(restauIndex) {
+                    if(!this.newDish.name || !this.newDish.price) {
+                        alert('Veuillez remplir au moins le nom et le prix du plat.');
+                        return;
+                    }
+                    this.restaurants[restauIndex].menu.push({
+                        name: this.newDish.name,
+                        price: parseInt(this.newDish.price),
+                        img: this.newDish.img || 'https://via.placeholder.com/150',
+                        desc: 'Produit ajouté via gestionnaire de stock'
+                    });
+                    this.newDish = { name: '', price: '', img: '' };
+                    this.saveStock();
+                },
+
+                deleteRestau(index) {
+                    if(confirm('🚨 ALERTE : Supprimer définitivement ce dossier boutique et tout son stock ?')) {
+                        this.restaurants.splice(index, 1);
+                        this.saveStock();
+                    }
+                }
+            }
+        }
+    </script>
+</body>
+</html>
