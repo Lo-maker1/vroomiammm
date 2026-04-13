@@ -28,8 +28,7 @@
             'Yasmine': '22992000000'
         };
 
-        // --- ANNUAIRE DES RESTAURANTS ---
-        // IMPORTANT : Ecris les noms ici en MINUSCULES (ex: 'oklm')
+        // --- ANNUAIRE DE SECOURS ---
         const restaurantNumbers = {
             'grillbaz': '22943923862',
             'mcqueen': '22900000000',
@@ -60,13 +59,20 @@
             if(!driverName) return alert("Choisis un livreur !");
             
             const dNum = driverNumbers[driverName];
+            
+            // MODIFICATION : On cherche d'abord dans les données de la commande, sinon dans l'annuaire
             const restoKey = String(restaurant).toLowerCase().trim();
-            const rNum = restaurantNumbers[restoKey];
+            
+            // Récupération du numéro (soit passé par l'index, soit dans l'annuaire local)
+            const ordersRef = ref(db, 'orders/' + id);
+            onValue(ordersRef, (snapshot) => {
+                const orderData = snapshot.val();
+                const rNum = orderData.restaurantPhone || restaurantNumbers[restoKey];
 
-            const mapsLinkClient = (gps && gps.includes('http')) ? gps : `http://google.com/maps?q=${encodeURIComponent(address)}`;
-            const mapsLinkResto = (restauGPS && restauGPS.includes('http')) ? restauGPS : 'Position non définie';
+                const mapsLinkClient = (gps && gps.includes('http')) ? gps : `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(address)}`;
+                const mapsLinkResto = (restauGPS && restauGPS.includes('http')) ? restauGPS : 'Position non définie';
 
-            const msgLivreur = `🚀 *COURSE VROUMIAM* 🛵\n` +
+                const msgLivreur = `🚀 *COURSE VROUMIAM* 🛵\n` +
                         `------------------------------\n` +
                         `🏢 *RESTO :* ${restaurant || 'Vroumiam'}\n` +
                         `🍔 *MENU :* ${items}\n` +
@@ -76,27 +82,30 @@
                         `🚩 *GPS RESTO :*\n${mapsLinkResto}\n\n` +
                         `📍 *GPS CLIENT :*\n${mapsLinkClient}\n` +
                         `------------------------------`;
-            
-            const msgResto = `🍳 *COMMANDE À PRÉPARER*\n` +
+                
+                const msgResto = `🍳 *COMMANDE À PRÉPARER*\n` +
                         `------------------------------\n` +
                         `📝 *MENU :* ${items}\n` +
                         `🛵 *LIVREUR :* ${driverName} (${dNum})\n\n` +
                         `*NB :* Le livreur arrive bientôt. Merci de lancer la préparation ! ⏱️\n` +
                         `------------------------------`;
 
-            // 1. Ouvrir WhatsApp Livreur
-            window.open(`https://wa.me/${dNum}?text=${encodeURIComponent(msgLivreur)}`, '_blank');
+                // 1. Ouvrir WhatsApp Livreur
+                window.open(`https://wa.me/${dNum}?text=${encodeURIComponent(msgLivreur)}`, '_blank');
 
-            // 2. Vérifier et envoyer au restaurant
-            if(rNum) {
-                // Cette alerte force le navigateur à autoriser la deuxième fenêtre
-                alert(`Livreur informé ! Appuyez sur OK pour envoyer la commande à ${restaurant}.`);
-                window.open(`https://wa.me/${rNum}?text=${encodeURIComponent(msgResto)}`, '_blank');
-            } else {
-                alert(`Attention: Le numéro de "${restaurant}" n'est pas dans ton annuaire.`);
-            }
+                // 2. Envoyer au resto si numéro trouvé
+                if(rNum) {
+                    setTimeout(() => {
+                        if(confirm(`Livreur informé ! Envoyer la commande à ${restaurant} (${rNum}) ?`)) {
+                            window.open(`https://wa.me/${rNum}?text=${encodeURIComponent(msgResto)}`, '_blank');
+                        }
+                    }, 500);
+                } else {
+                    alert(`Attention: Aucun numéro trouvé pour "${restaurant}".`);
+                }
 
-            update(ref(db, 'orders/' + id), { status: 'En route', driver: driverName });
+                update(ref(db, 'orders/' + id), { status: 'En route', driver: driverName });
+            }, { onlyOnce: true });
         };
 
         window.updateStatus = (id, newStatus) => {
@@ -120,7 +129,10 @@
                 Object.keys(data).reverse().forEach(id => {
                     const order = data[id];
                     if (order.archived === true) return;
+                    
                     const hasGPS = order.gps && order.gps.includes('http');
+                    const hasRestoGPS = order.restauGPS && order.restauGPS.includes('http');
+
                     if (order.status === 'Livré') {
                         totalCA += parseInt(order.total) || 0;
                         if (order.driver && driverStats[order.driver] !== undefined) driverStats[order.driver]++;
@@ -141,8 +153,8 @@
                                         <p>👤 <span class="text-white">${order.clientName}</span> (${order.phone})</p>
                                         <p>📍 ${order.address}</p>
                                         <div class="flex gap-2 mt-2">
-                                            ${hasGPS ? `<a href="${order.gps}" target="_blank" class="inline-flex items-center gap-2 bg-blue-600/20 text-blue-400 px-3 py-2 rounded-xl text-[10px] font-black uppercase border border-blue-600/30 font-black italic">📍 Client</a>` : ''}
-                                            ${order.restauGPS ? `<a href="${order.restauGPS}" target="_blank" class="inline-flex items-center gap-2 bg-orange-500/20 text-orange-500 px-3 py-2 rounded-xl text-[10px] font-black uppercase border border-orange-500/30 font-black italic text-orange-500">🏢 Resto</a>` : ''}
+                                            ${hasGPS ? `<a href="${order.gps}" target="_blank" class="inline-flex items-center gap-2 bg-blue-600/20 text-blue-400 px-3 py-2 rounded-xl text-[10px] font-black uppercase border border-blue-600/30 italic">📍 Client</a>` : ''}
+                                            ${hasRestoGPS ? `<a href="${order.restauGPS}" target="_blank" class="inline-flex items-center gap-2 bg-orange-500/20 text-orange-500 px-3 py-2 rounded-xl text-[10px] font-black uppercase border border-orange-500/30 italic">🏢 Resto</a>` : ''}
                                         </div>
                                     </div>
                                 </div>
