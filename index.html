@@ -11,18 +11,13 @@
         body { font-family: 'Outfit', sans-serif; scroll-behavior: smooth; }
         .no-scrollbar::-webkit-scrollbar { display: none; }
         .glass { background: rgba(255, 255, 255, 0.03); backdrop-filter: blur(15px); border: 1px solid rgba(255, 255, 255, 0.08); }
-        .glass-dark { background: rgba(10, 10, 10, 0.8); backdrop-filter: blur(20px); border: 1px solid rgba(255, 255, 255, 0.05); }
         .progress-bar { transition: width 1s cubic-bezier(0.4, 0, 0.2, 1); }
-        .orange-glow { box-shadow: 0 0 40px rgba(249, 115, 22, 0.2); }
-        @keyframes pulse-orange { 
-            0% { box-shadow: 0 0 0 0 rgba(249, 115, 22, 0.4); transform: scale(1); } 
-            70% { box-shadow: 0 0 0 25px rgba(249, 115, 22, 0); transform: scale(1.05); } 
-            100% { box-shadow: 0 0 0 0 rgba(249, 115, 22, 0); transform: scale(1); } 
-        }
-        .pulse { animation: pulse-orange 2.5s infinite; }
-        .btn-grad { background: linear-gradient(90deg, #f97316, #fb923c); transition: 0.3s; }
-        .btn-grad:active { transform: scale(0.95); opacity: 0.9; }
+        .uber-card { transition: all 0.3s ease; }
+        .uber-card:active { transform: scale(0.98); }
+        .category-pill { border: 1px solid #222; transition: all 0.2s; }
+        .category-pill.active { background: white; color: black; border-color: white; }
         input::placeholder { color: rgba(255, 255, 255, 0.3); }
+        .line-clamp-2 { display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
     </style>
 </head>
 <body class="bg-[#050505] text-white overflow-x-hidden" x-data="{ 
@@ -41,22 +36,31 @@
     
     restaurants: [
         { 
-            id: 1, name: 'Grillbaz', 
+            id: 1, name: 'Grillbaz', rating: '4.8', time: '15-25 min',
             img: 'https://images.unsplash.com/photo-1594212699903-ec8a3eca50f5?q=80&w=800',
             gps: 'https://www.google.com/maps?q=6.3703,2.3912',
-            menu: [ { name: 'Whopper Classic', price: 3500 }, { name: 'Double Cheese', price: 4500 } ]
+            menu: [ 
+                { name: 'Whopper Classic', desc: 'Bœuf grillé à la flamme, tomates fraîches, oignons.', price: 3500, img: 'https://images.unsplash.com/photo-1568901346375-23c9450c58cd?w=200' }, 
+                { name: 'Double Cheese', desc: 'Double portion de cheddar fondu et steak juteux.', price: 4500, img: 'https://images.unsplash.com/photo-1521305916504-4a1121188589?w=200' } 
+            ]
         },
         { 
-            id: 2, name: 'Pizza Relax', 
+            id: 2, name: 'Pizza Relax', rating: '4.5', time: '20-35 min',
             img: 'https://images.unsplash.com/photo-1513104890138-7c749659a591?q=80&w=800',
             gps: 'https://www.google.com/maps?q=6.3600,2.4000',
-            menu: [ { name: 'Pizza Margherita', price: 5000 }, { name: 'Pizza Reine', price: 6500 } ]
+            menu: [ 
+                { name: 'Pizza Margherita', desc: 'Sauce tomate San Marzano, mozzarella, basilic.', price: 5000, img: 'https://images.unsplash.com/photo-1574071318508-1cdbad80ad38?w=200' }, 
+                { name: 'Pizza Reine', desc: 'Jambon cru, champignons de Paris et olives.', price: 6500, img: 'https://images.unsplash.com/photo-1541745537411-b8046dc6d66c?w=200' } 
+            ]
         },
         { 
-            id: 3, name: 'Maquis du Port', 
+            id: 3, name: 'Maquis du Port', rating: '4.9', time: '10-20 min',
             img: 'https://images.unsplash.com/photo-1567620905732-2d1ec7bb7445?q=80&w=800',
             gps: 'https://www.google.com/maps?q=6.3500,2.4100',
-            menu: [ { name: 'Atassi Complet', price: 2500 }, { name: 'Igname Pilée', price: 3000 } ]
+            menu: [ 
+                { name: 'Atassi Complet', desc: 'Riz au haricot traditionnel, wagashi frit et œuf.', price: 2500, img: 'https://images.unsplash.com/photo-1512621776951-a57141f2eefd?w=200' }, 
+                { name: 'Igname Pilée', desc: 'Igname pilée avec sauce arachide ou graine.', price: 3000, img: 'https://images.unsplash.com/photo-1504674900247-0877df9cc836?w=200' } 
+            ]
         }
     ],
 
@@ -122,194 +126,205 @@
     }
 }">
 
-    <nav class="p-6 flex justify-between items-center sticky top-0 bg-black/90 backdrop-blur-2xl z-40 border-b border-white/5" x-show="view !== 'tracking'">
-        <div>
-            <h1 @click="view = 'restaurants'" class="text-3xl font-black italic text-orange-500 cursor-pointer uppercase tracking-tighter">VROUMIAM</h1>
-            <div class="h-1 w-8 bg-orange-600 rounded-full mt-[-4px]"></div>
+    <nav class="p-5 flex justify-between items-center sticky top-0 bg-black/95 backdrop-blur-xl z-40 border-b border-white/5" x-show="view !== 'tracking'">
+        <div class="flex items-center gap-4">
+            <h1 @click="view = 'restaurants'" class="text-2xl font-black tracking-tighter cursor-pointer">VROUM<span class="text-orange-500">IAM</span></h1>
         </div>
-        <button @click="showCart = true" class="glass p-4 rounded-2xl relative transition-transform active:scale-90 border border-white/10">
-            <span class="text-xl">🛍️</span>
-            <span x-show="cart.length > 0" class="absolute -top-1 -right-1 bg-orange-500 text-black text-[10px] h-5 w-5 flex items-center justify-center rounded-lg font-black border-2 border-black" x-text="cart.length"></span>
+        <button @click="showCart = true" class="bg-zinc-900 px-5 py-2.5 rounded-full flex items-center gap-2 border border-white/5 active:scale-95 transition-all">
+            <span class="text-sm font-bold">🛍️ Panier</span>
+            <span x-show="cart.length > 0" class="bg-white text-black text-[10px] font-extrabold px-2 py-0.5 rounded-full" x-text="cart.length"></span>
         </button>
     </nav>
 
-    <main x-show="view === 'restaurants'" class="px-6 pb-32 space-y-10 pt-8" x-transition>
-        <div class="flex justify-between items-end">
-            <div>
-                <h2 class="text-xs font-black tracking-[0.3em] uppercase text-gray-500 mb-1">Explore</h2>
-                <h3 class="text-3xl font-black italic uppercase leading-none">Cuisines d'élite</h3>
-            </div>
-            <p class="text-[10px] text-orange-500 font-bold uppercase italic bg-orange-500/10 px-3 py-1 rounded-full border border-orange-500/20" x-show="name" x-text="'Chef ' + name"></p>
+    <main x-show="view === 'restaurants'" class="pb-32" x-transition>
+        <div class="flex gap-2 overflow-x-auto p-5 no-scrollbar">
+            <button class="category-pill active whitespace-nowrap px-6 py-2 rounded-full text-xs font-bold uppercase tracking-widest">Tout</button>
+            <button class="category-pill whitespace-nowrap px-6 py-2 rounded-full text-xs font-bold uppercase tracking-widest text-zinc-500">Burgers</button>
+            <button class="category-pill whitespace-nowrap px-6 py-2 rounded-full text-xs font-bold uppercase tracking-widest text-zinc-500">Pizzas</button>
+            <button class="category-pill whitespace-nowrap px-6 py-2 rounded-full text-xs font-bold uppercase tracking-widest text-zinc-500">Local</button>
         </div>
 
-        <div @click="shareVroumiam()" class="relative p-8 bg-gradient-to-br from-orange-500 to-orange-700 rounded-[3rem] flex items-center justify-between cursor-pointer active:scale-95 transition-all shadow-2xl orange-glow group overflow-hidden">
-            <div class="absolute -right-4 -bottom-4 text-8xl opacity-10 group-hover:scale-125 transition-transform duration-700">🍔</div>
-            <div class="relative z-10">
-                <p class="text-black font-black uppercase text-xl leading-none mb-1 italic">Offre de parrainage</p>
-                <p class="text-black/70 text-[10px] font-bold italic uppercase tracking-widest leading-none">Gagne 500 F par invité !</p>
-            </div>
-            <div class="h-12 w-12 bg-black rounded-2xl flex items-center justify-center text-white font-black z-10">➔</div>
-        </div>
-
-        <div class="space-y-8">
+        <div class="px-5 space-y-8 mt-2">
+            <h2 class="text-xl font-bold tracking-tight">Populaire à proximité</h2>
+            
             <template x-for="restau in restaurants" :key="restau.id">
-                <div @click="openMenu(restau)" class="group bg-gray-900/40 rounded-[3.5rem] p-4 border border-white/5 shadow-2xl active:scale-95 transition-all cursor-pointer hover:border-orange-500/30">
-                    <div class="h-56 rounded-[2.8rem] overflow-hidden relative shadow-inner">
-                        <img :src="restau.img" class="w-full h-full object-cover transition-transform duration-700 group-hover:scale-110">
-                        <div class="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-transparent"></div>
-                        <div class="absolute bottom-6 left-8">
-                            <h3 class="text-3xl font-black italic uppercase tracking-tighter text-white" x-text="restau.name"></h3>
-                            <p class="text-[10px] text-orange-500 font-black uppercase tracking-widest">Voir la carte ➔</p>
+                <div @click="openMenu(restau)" class="uber-card group cursor-pointer">
+                    <div class="relative h-52 w-full overflow-hidden rounded-xl mb-3">
+                        <img :src="restau.img" class="w-full h-full object-cover transition duration-700 group-hover:scale-105">
+                        <div class="absolute top-4 right-4 bg-white text-black h-9 w-9 flex items-center justify-center rounded-full shadow-lg">
+                            <span class="text-xs">🤍</span>
+                        </div>
+                    </div>
+                    <div class="flex justify-between items-start">
+                        <div>
+                            <h3 class="font-bold text-lg leading-tight" x-text="restau.name"></h3>
+                            <p class="text-zinc-400 text-sm mt-1" x-text="'Frais de livraison 0 F • ' + restau.time"></p>
+                        </div>
+                        <div class="bg-zinc-800 h-8 w-8 flex items-center justify-center rounded-full">
+                            <span class="text-[10px] font-black" x-text="restau.rating"></span>
                         </div>
                     </div>
                 </div>
             </template>
         </div>
-    </main>
 
-    <main x-show="view === 'menu'" class="px-6 pb-32 pt-8" x-transition>
-        <button @click="view = 'restaurants'" class="mb-10 text-gray-500 font-black uppercase text-[10px] tracking-widest flex items-center gap-2">
-            <span class="text-lg">←</span> Retour
-        </button>
-        
-        <div class="flex items-center gap-4 mb-12">
-            <div class="h-14 w-2 bg-orange-600 rounded-full"></div>
-            <h2 class="text-5xl font-black text-white italic uppercase tracking-tighter leading-none" x-text="selectedRestau?.name"></h2>
-        </div>
-
-        <div class="grid gap-6">
-            <template x-for="item in selectedRestau?.menu">
-                <div class="glass p-8 rounded-[3rem] flex justify-between items-center group transition-all hover:bg-white/5 border border-white/5">
-                    <div>
-                        <p class="font-black text-2xl italic uppercase tracking-tight mb-1" x-text="item.name"></p>
-                        <p class="text-orange-500 font-black text-lg" x-text="item.price + ' F'"></p>
-                    </div>
-                    <button @click="prepareAdd(item)" class="btn-grad text-black h-16 w-16 rounded-[2rem] flex items-center justify-center shadow-xl shadow-orange-500/20 transition-all">
-                        <span class="text-3xl font-light">+</span>
-                    </button>
+        <div class="px-5 mt-12">
+            <div @click="shareVroumiam()" class="p-6 bg-orange-600 rounded-2xl flex items-center justify-between cursor-pointer active:scale-95 transition-all">
+                <div>
+                    <p class="text-black font-black uppercase text-sm italic">Invitez des amis</p>
+                    <p class="text-black/70 text-[10px] font-bold uppercase">Gagnez 500 F par commande</p>
                 </div>
-            </template>
+                <span class="text-2xl">🎁</span>
+            </div>
         </div>
     </main>
 
-    <main x-show="view === 'tracking'" class="fixed inset-0 bg-[#050505] z-50 flex flex-col items-center justify-start p-10 text-center overflow-y-auto no-scrollbar" x-transition>
-        <div class="w-28 h-28 bg-orange-600 rounded-[3rem] flex items-center justify-center mb-10 mt-16 pulse orange-glow">
-            <span class="text-5xl">🛵</span>
-        </div>
-        <h2 class="text-4xl font-black italic uppercase mb-2 tracking-tighter">Moteur chaud !</h2>
-        <p class="text-gray-500 font-bold uppercase text-[10px] tracking-[0.5em] mb-12">On s'occupe de tout</p>
-
-        <div class="w-full max-w-xs bg-white/5 h-2.5 rounded-full mb-6 overflow-hidden border border-white/5">
-            <div class="bg-orange-500 h-full progress-bar shadow-[0_0_15px_rgba(249,115,22,1)]" :style="orderStatus === 'Cuisine' ? 'width: 33%' : (orderStatus === 'Route' ? 'width: 66%' : 'width: 100%')"></div>
+    <main x-show="view === 'menu'" class="pb-32" x-transition>
+        <div class="relative h-64">
+            <img :src="selectedRestau?.img" class="w-full h-full object-cover">
+            <button @click="view = 'restaurants'" class="absolute top-6 left-6 bg-white text-black h-10 w-10 flex items-center justify-center rounded-full shadow-2xl font-bold">←</button>
         </div>
         
-        <div class="flex justify-between w-full max-w-xs text-[10px] font-black uppercase italic mb-16 px-1">
-            <span :class="orderStatus === 'Cuisine' ? 'text-orange-500' : 'text-gray-600'">Cuisine</span>
-            <span :class="orderStatus === 'Route' ? 'text-orange-500' : 'text-gray-600'">En route</span>
-            <span class="text-gray-600">Arrivé</span>
-        </div>
-        
-        <div class="bg-orange-600 p-8 rounded-[3.5rem] w-full max-w-xs mb-10 shadow-2xl relative overflow-hidden group">
-            <div class="absolute inset-0 bg-black opacity-10 group-hover:scale-110 transition-transform"></div>
-            <p class="relative z-10 text-black font-black uppercase text-xs mb-2 italic">Parrainage actif</p>
-            <p class="relative z-10 text-black/80 text-[11px] font-bold leading-tight mb-6 italic">Invite un ami. S'il commande, tu encaisses 500 F de crédit !</p>
-            <button @click="shareVroumiam()" class="relative z-10 w-full bg-black text-white font-black py-5 rounded-2xl text-[10px] uppercase italic active:scale-95 transition tracking-widest">PARTAGER ➔</button>
-        </div>
+        <div class="p-6">
+            <h2 class="text-3xl font-black mb-1 tracking-tight" x-text="selectedRestau?.name"></h2>
+            <div class="flex gap-4 text-sm font-bold text-zinc-400 mb-8">
+                <span>⭐ <span x-text="selectedRestau?.rating" class="text-white"></span></span>
+                <span>•</span>
+                <span x-text="selectedRestau?.time"></span>
+            </div>
 
-        <div class="glass p-6 rounded-[2.5rem] w-full max-w-xs border-white/10 mb-10">
-            <p class="text-gray-600 text-[10px] font-black uppercase mb-2 tracking-widest">Facture Total</p>
-            <p class="font-black italic text-white text-xl uppercase tracking-tight" x-text="total + ' F • ' + selectedRestau?.name"></p>
-        </div>
-        
-        <button @click="view = 'restaurants'; cart = [];" class="text-gray-700 font-black uppercase text-[10px] tracking-[0.3em] border-b-2 border-gray-800 pb-1">Nouveau festin</button>
-    </main>
-
-    <div x-show="tempItem" class="fixed inset-0 z- bg-black/95 backdrop-blur-sm flex items-end justify-center" x-transition:enter="transition ease-out duration-300" x-transition:enter-start="opacity-0 translate-y-full" x-transition:leave="transition ease-in duration-200" x-transition:leave-end="opacity-0 translate-y-full">
-        <div class="bg-[#0A0A0A] w-full rounded-t-[4rem] p-10 border-t border-white/10 shadow-2xl pb-20">
-            <div class="w-12 h-1.5 bg-white/10 rounded-full mx-auto mb-10"></div>
-            <h3 class="text-4xl font-black italic text-center mb-10 uppercase text-orange-500 tracking-tighter" x-text="tempItem?.name"></h3>
+            <h3 class="text-xl font-bold mb-6 border-b border-zinc-900 pb-4 uppercase tracking-tighter">Menu</h3>
             
-            <div class="space-y-4 mb-12">
-                <label class="flex items-center justify-between p-6 glass rounded-[2rem] cursor-pointer group active:bg-white/5 transition-all">
-                    <span class="font-black italic uppercase tracking-tight text-lg">Sauce Mayo/Ketch</span>
-                    <input type="checkbox" x-model="options.sauce" class="w-7 h-7 rounded-lg accent-orange-500 bg-black border-white/10">
+            <div class="space-y-2">
+                <template x-for="item in selectedRestau?.menu">
+                    <div @click="prepareAdd(item)" class="flex justify-between items-center py-6 border-b border-zinc-900 active:bg-zinc-900 transition px-2 rounded-xl">
+                        <div class="flex-1 pr-4">
+                            <p class="font-bold text-lg tracking-tight" x-text="item.name"></p>
+                            <p class="text-zinc-500 text-xs mt-1 line-clamp-2" x-text="item.desc"></p>
+                            <p class="mt-3 font-bold text-orange-500" x-text="item.price + ' F'"></p>
+                        </div>
+                        <div class="h-24 w-24 rounded-lg overflow-hidden bg-zinc-800 border border-white/5 shadow-xl">
+                            <img :src="item.img" class="w-full h-full object-cover">
+                        </div>
+                    </div>
+                </template>
+            </div>
+        </div>
+    </main>
+
+    <main x-show="view === 'tracking'" class="fixed inset-0 bg-white text-black z-50 flex flex-col p-8 overflow-y-auto no-scrollbar" x-transition>
+        <div class="flex justify-between items-center mb-10">
+            <span class="font-black text-xl tracking-tighter uppercase">Vroum<span class="text-orange-500">iam</span></span>
+            <button @click="view = 'restaurants'; cart = []" class="bg-zinc-100 h-10 w-10 flex items-center justify-center rounded-full font-bold">×</button>
+        </div>
+        
+        <div class="mb-10">
+            <h2 class="text-3xl font-black mb-1 leading-tight">Moteur chaud !</h2>
+            <p class="text-zinc-500 font-bold uppercase text-[10px] tracking-widest">Arrivée prévue dans 20 min</p>
+        </div>
+
+        <div class="w-full bg-zinc-100 h-2 rounded-full mb-8 overflow-hidden">
+            <div class="bg-black h-full progress-bar shadow-[0_0_15px_rgba(0,0,0,0.2)]" :style="orderStatus === 'Cuisine' ? 'width: 33%' : (orderStatus === 'Route' ? 'width: 66%' : 'width: 100%')"></div>
+        </div>
+        
+        <div class="flex gap-4 items-center p-5 border border-zinc-200 rounded-2xl mb-8">
+            <div class="text-3xl animate-bounce">🛵</div>
+            <div>
+                <p class="font-bold tracking-tight" x-text="orderStatus === 'Cuisine' ? 'Le chef prépare votre festin' : 'Votre livreur est en route'"></p>
+                <p class="text-xs text-zinc-500">Dernière étape avant la dégustation</p>
+            </div>
+        </div>
+
+        <div class="bg-zinc-50 p-6 rounded-2xl border border-zinc-100 mb-8">
+            <p class="text-zinc-400 text-[10px] font-black uppercase mb-1">Résumé</p>
+            <p class="font-bold text-lg" x-text="total + ' F • ' + selectedRestau?.name"></p>
+        </div>
+        
+        <button @click="shareVroumiam()" class="w-full bg-black text-white py-5 rounded-xl font-black uppercase text-sm tracking-widest shadow-xl">Partager mon trajet</button>
+    </main>
+
+    <div x-show="tempItem" class="fixed inset-0 z- bg-black/80 backdrop-blur-sm flex items-end justify-center" x-transition:enter="transition ease-out duration-300" x-transition:enter-start="opacity-0 translate-y-full" x-transition:leave="transition ease-in duration-200" x-transition:leave-end="opacity-0 translate-y-full">
+        <div class="bg-[#0A0A0A] w-full rounded-t-[2.5rem] p-8 border-t border-white/10 shadow-2xl pb-12">
+            <div class="w-12 h-1 bg-zinc-800 rounded-full mx-auto mb-8"></div>
+            <h3 class="text-2xl font-black mb-8 uppercase tracking-tight text-white text-center" x-text="tempItem?.name"></h3>
+            
+            <div class="space-y-3 mb-10">
+                <label class="flex items-center justify-between p-5 bg-zinc-900 rounded-2xl cursor-pointer active:bg-zinc-800 transition-all border border-white/5">
+                    <span class="font-bold text-sm uppercase tracking-wide">Sauce Mayo/Ketch</span>
+                    <input type="checkbox" x-model="options.sauce" class="w-6 h-6 rounded accent-orange-500">
                 </label>
-                <label class="flex items-center justify-between p-6 glass rounded-[2rem] cursor-pointer group active:bg-white/5 transition-all">
-                    <span class="font-black italic uppercase tracking-tight text-lg text-red-500 italic">Piment 🔥</span>
-                    <input type="checkbox" x-model="options.piment" class="w-7 h-7 rounded-lg accent-orange-500 bg-black border-white/10">
+                <label class="flex items-center justify-between p-5 bg-zinc-900 rounded-2xl cursor-pointer active:bg-zinc-800 transition-all border border-white/5">
+                    <span class="font-bold text-sm uppercase tracking-wide text-red-500">Piment 🔥</span>
+                    <input type="checkbox" x-model="options.piment" class="w-6 h-6 rounded accent-orange-500">
                 </label>
-                <label class="flex items-center justify-between p-6 glass rounded-[2rem] cursor-pointer group active:bg-white/5 transition-all">
-                    <span class="font-black italic uppercase tracking-tight text-lg">Boisson (+500 F)</span>
-                    <input type="checkbox" x-model="options.boisson" class="w-7 h-7 rounded-lg accent-orange-500 bg-black border-white/10">
+                <label class="flex items-center justify-between p-5 bg-zinc-900 rounded-2xl cursor-pointer active:bg-zinc-800 transition-all border border-white/5">
+                    <span class="font-bold text-sm uppercase tracking-wide">Boisson (+500 F)</span>
+                    <input type="checkbox" x-model="options.boisson" class="w-6 h-6 rounded accent-orange-500">
                 </label>
             </div>
             
-            <div class="flex gap-4">
-                <button @click="tempItem = null" class="flex-1 py-6 text-gray-500 font-black uppercase text-xs tracking-widest">Annuler</button>
-                <button @click="confirmAdd()" class="flex- btn-grad text-black py-6 rounded-3xl font-black uppercase italic text-lg shadow-xl shadow-orange-500/20">Ajouter au panier</button>
+            <div class="flex flex-col gap-3">
+                <button @click="confirmAdd()" class="w-full bg-white text-black py-5 rounded-xl font-black uppercase text-sm tracking-widest shadow-lg">Ajouter au panier</button>
+                <button @click="tempItem = null" class="w-full py-4 text-zinc-500 font-bold text-xs uppercase tracking-widest">Annuler</button>
             </div>
         </div>
     </div>
 
-    <div x-show="showCart" class="fixed inset-0 z- bg-[#050505] p-8 flex flex-col" x-transition:enter="transition ease-out duration-300" x-transition:enter-start="translate-x-full">
-        <div class="flex justify-between items-center mb-12">
-            <button @click="showCart = false; step = 1" class="text-gray-500 font-black uppercase text-xs tracking-[0.3em]">← Retour</button>
-            <p class="text-[10px] text-orange-500 font-black italic uppercase">Step <span x-text="step"></span>/2</p>
+    <div x-show="showCart" class="fixed inset-0 z- bg-[#050505] p-6 flex flex-col" x-transition:enter="transition ease-out duration-300" x-transition:enter-start="translate-x-full">
+        <div class="flex justify-between items-center mb-8">
+            <button @click="showCart = false; step = 1" class="text-3xl">×</button>
+            <p class="text-xs text-orange-500 font-black uppercase tracking-widest">Étape <span x-text="step"></span>/2</p>
         </div>
         
         <div x-show="step === 1" class="flex flex-col h-full" x-transition>
-            <h2 class="text-5xl font-black mb-12 italic uppercase text-white tracking-tighter leading-none">Panier</h2>
-            <div class="flex-1 overflow-y-auto space-y-6 no-scrollbar pb-10">
+            <h2 class="text-3xl font-black mb-8 tracking-tight">Votre commande</h2>
+            <div class="flex-1 overflow-y-auto space-y-4 no-scrollbar pb-10">
                 <template x-for="(item, index) in cart" :key="index">
-                    <div class="glass p-7 rounded-[2.5rem] flex justify-between items-center border border-white/5">
-                        <div>
-                            <p class="font-black text-xl italic uppercase tracking-tight mb-1" x-text="item.name"></p>
-                            <p class="text-orange-500 font-black text-sm" x-text="item.price + ' F'"></p>
+                    <div class="flex justify-between items-center border-b border-zinc-900 pb-4">
+                        <div class="flex items-center gap-4">
+                            <span class="bg-zinc-900 px-2 py-1 text-[10px] font-bold rounded">1</span>
+                            <p class="font-bold text-sm tracking-tight" x-text="item.name"></p>
                         </div>
-                        <button @click="cart.splice(index, 1)" class="h-10 w-10 bg-red-500/10 text-red-500 rounded-xl flex items-center justify-center font-black">×</button>
+                        <div class="flex items-center gap-4">
+                            <p class="font-bold text-sm" x-text="item.price + ' F'"></p>
+                            <button @click="cart.splice(index, 1)" class="text-red-500 text-sm font-bold">Suppr.</button>
+                        </div>
                     </div>
                 </template>
                 <div x-show="cart.length === 0" class="text-center py-20">
-                    <p class="text-gray-600 font-black uppercase italic">Ton panier est vide...</p>
+                    <p class="text-zinc-600 font-bold uppercase text-xs italic tracking-widest">Panier vide</p>
                 </div>
             </div>
-            <div class="pt-6 border-t border-white/5 space-y-4">
-                <div class="flex justify-between items-end px-4">
-                    <p class="text-gray-500 font-black uppercase text-[10px] tracking-widest">Total Estimé</p>
-                    <p class="text-3xl font-black italic" x-text="total + ' F'"></p>
+            <div class="pt-6 border-t border-zinc-900 space-y-4">
+                <div class="flex justify-between items-center px-2">
+                    <p class="text-zinc-500 font-bold text-xs uppercase">Total</p>
+                    <p class="text-2xl font-black italic" x-text="total + ' F'"></p>
                 </div>
-                <button x-show="cart.length > 0" @click="step = 2" class="btn-grad w-full text-black font-black py-7 rounded-[2.8rem] text-xl uppercase italic shadow-2xl">Commander ➔</button>
+                <button x-show="cart.length > 0" @click="step = 2" class="w-full bg-white text-black font-black py-5 rounded-xl text-sm uppercase tracking-widest shadow-xl">Continuer ➔</button>
             </div>
         </div>
 
         <div x-show="step === 2" class="space-y-6 overflow-y-auto no-scrollbar pb-10" x-transition>
-            <h2 class="text-5xl font-black mb-10 text-orange-500 italic uppercase tracking-tighter">Infos</h2>
-            <div class="space-y-4">
-                <input x-model="name" type="text" placeholder="Ton Nom" class="w-full glass p-7 rounded-3xl outline-none text-white font-black italic text-lg border-white/10 focus:border-orange-500/50 transition-all">
-                <input x-model="phone" type="tel" placeholder="N° de Téléphone" class="w-full glass p-7 rounded-3xl outline-none text-white font-black italic text-lg border-white/10 focus:border-orange-500/50 transition-all">
-                <input x-model="address" type="text" placeholder="Quartier & Précisions" class="w-full glass p-7 rounded-3xl outline-none text-white font-black italic text-lg border-white/10 focus:border-orange-500/50 transition-all">
+            <h2 class="text-3xl font-black mb-8 tracking-tight">Livraison</h2>
+            <div class="space-y-3">
+                <input x-model="name" type="text" placeholder="Prénom et Nom" class="w-full bg-zinc-900 p-5 rounded-xl outline-none font-bold text-sm border border-transparent focus:border-white/20 transition-all">
+                <input x-model="phone" type="tel" placeholder="Numéro de téléphone" class="w-full bg-zinc-900 p-5 rounded-xl outline-none font-bold text-sm border border-transparent focus:border-white/20 transition-all">
+                <input x-model="address" type="text" placeholder="Adresse (ex: Fidjrossè, Villa 12)" class="w-full bg-zinc-900 p-5 rounded-xl outline-none font-bold text-sm border border-transparent focus:border-white/20 transition-all">
             </div>
 
-            <div class="grid grid-cols-2 gap-4 mt-8">
-                <button @click="paymentMethod = 'MTN'" :class="paymentMethod === 'MTN' ? 'bg-yellow-500 text-black border-yellow-500' : 'bg-white/5 border-white/10 text-gray-500'" class="py-6 rounded-3xl font-black text-xs border uppercase italic transition-all">MTN Money</button>
-                <button @click="paymentMethod = 'Moov'" :class="paymentMethod === 'Moov' ? 'bg-blue-600 text-white border-blue-600' : 'bg-white/5 border-white/10 text-gray-500'" class="py-6 rounded-3xl font-black text-xs border uppercase italic transition-all">Moov Money</button>
+            <div class="grid grid-cols-2 gap-3 mt-6">
+                <button @click="paymentMethod = 'MTN'" :class="paymentMethod === 'MTN' ? 'bg-yellow-500 text-black' : 'bg-zinc-900 text-zinc-500'" class="py-4 rounded-xl font-black text-[10px] uppercase tracking-widest transition-all">MTN Money</button>
+                <button @click="paymentMethod = 'Moov'" :class="paymentMethod === 'Moov' ? 'bg-blue-600 text-white' : 'bg-zinc-900 text-zinc-500'" class="py-4 rounded-xl font-black text-[10px] uppercase tracking-widest transition-all">Moov Money</button>
             </div>
 
-            <div class="p-8 bg-orange-500/5 border border-orange-500/20 rounded-[3rem] relative overflow-hidden group">
-                <div x-show="paymentMethod === 'MTN'" class="text-center" x-transition>
-                    <p class="text-[10px] text-yellow-500 font-black uppercase tracking-widest mb-2">Transfert MTN</p>
-                    <p class="text-white font-black text-3xl italic tracking-tight">51 25 55 85</p>
-                </div>
-                <div x-show="paymentMethod === 'Moov'" class="text-center" x-transition>
-                    <p class="text-[10px] text-blue-400 font-black uppercase tracking-widest mb-2">Transfert Moov</p>
-                    <p class="text-white font-black text-3xl italic tracking-tight">95 00 00 00</p>
-                </div>
-                <p class="text-orange-500 text-[9px] font-black text-center uppercase mt-6 italic opacity-60">⚠️ Envoie le montant exact pour valider</p>
+            <div class="p-6 bg-zinc-900 border border-white/5 rounded-2xl text-center">
+                <p class="text-[10px] text-zinc-500 font-black uppercase mb-1">Transfert attendu sur :</p>
+                <p class="text-2xl font-black italic tracking-tighter" x-text="paymentMethod === 'MTN' ? '51 25 55 85' : '95 00 00 00'"></p>
             </div>
 
-            <button @click="finalizeOrder" :disabled="isSending" class="w-full bg-white text-black font-black py-7 rounded-[2.8rem] text-xl mt-6 uppercase italic shadow-2xl active:scale-95 transition-all flex items-center justify-center">
-                <span x-show="!isSending">LANCER LA COURSE 🛵</span>
-                <span x-show="isSending" class="animate-pulse">ENVOI DU SIGNAL...</span>
+            <button @click="finalizeOrder" :disabled="isSending" class="w-full bg-orange-600 text-black font-black py-5 rounded-xl text-sm uppercase tracking-widest shadow-2xl active:scale-95 transition-all">
+                <span x-show="!isSending">Commander maintenant 🛵</span>
+                <span x-show="isSending" class="animate-pulse">Traitement...</span>
             </button>
         </div>
     </div>
